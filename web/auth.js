@@ -21,7 +21,9 @@
 #authGate .card{background:rgba(255,255,255,.85);backdrop-filter:blur(16px);-webkit-backdrop-filter:blur(16px);color:var(--ink,#141a33);border:1px solid rgba(99,102,241,.18);border-radius:22px;padding:30px 26px;width:100%;max-width:390px;box-shadow:0 30px 60px -24px rgba(49,46,129,.35);position:relative;overflow:hidden}
 #authGate .card::before{content:"";position:absolute;inset:0 0 auto 0;height:4px;background:var(--grad,linear-gradient(120deg,#4f46e5,#7c3aed,#06b6d4))}
 #authGate h1{margin:0;font-size:1.6rem;font-family:var(--head,sans-serif);letter-spacing:-.02em}
-#authGate h1 b{background:var(--grad,#4f46e5);-webkit-background-clip:text;background-clip:text;color:transparent}
+#authGate h1{display:flex;align-items:center;gap:12px}
+#authGate h1 img{border-radius:12px;box-shadow:0 6px 16px -6px rgba(30,41,59,.55)}
+#authGate h1 b{background:linear-gradient(120deg,#1e293b,#475569 60%,#64748b);-webkit-background-clip:text;background-clip:text;color:transparent}
 #authGate h1 span{font-family:var(--letter,serif);color:var(--accent,#2f43a6);font-weight:400;margin-left:8px;font-size:1.2rem}
 #authGate p.sub{margin:4px 0 18px;color:var(--muted,#5d6778);font-size:.92rem}
 #authGate .switch{display:flex;background:rgba(79,70,229,.07);border-radius:12px;padding:3px;margin-bottom:16px}
@@ -81,7 +83,7 @@ body.locked .wrap{visibility:hidden}`;
     gate.id = "authGate";
     gate.innerHTML = `
 <form class="card" novalidate>
-  <h1><b>Anuvad Desk</b><span>अनुवाद</span></h1>
+  <h1><img src="logo.svg" width="44" height="44" alt=""><b>Anuvad</b></h1>
   <p class="sub">Write in English, get it in Hindi or any language.</p>
   <div class="switch" role="group" aria-label="Account">
     <button type="button" data-m="signin">Sign in</button>

@@ -1,8 +1,8 @@
 // Keeps the app shell and its libraries cached so Anuvad Desk opens without internet.
 // Translation itself still needs internet unless Chrome's on-device translator is available.
-const CACHE = "anuvad-v10";
+const CACHE = "anuvad-v11";
 const SHELL = [
-  "./", "./index.html", "./auth.js", "./manifest.webmanifest", "./icon-192.png", "./icon-512.png",
+  "./", "./index.html", "./auth.js", "./manifest.webmanifest", "./logo.svg", "./favicon-32.png", "./icon-192.png", "./icon-512.png",
   "https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js",
   "https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js",
   "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js",
