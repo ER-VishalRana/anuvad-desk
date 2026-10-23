@@ -922,6 +922,7 @@ async function pageImage(p){
   await p.pg.render({canvasContext:c.getContext("2d"),viewport:vp}).promise;return c;
 }
 $("#pdfToLetter").onclick=async()=>{
+  if(!pdf)return;
   setStatus("busy","Reading the PDF text…");let text="";
   for(const p of pdf.pages){const tc=await p.pg.getTextContent();for(const it of tc.items){text+=it.str+(it.hasEOL?"\n":"")}text+="\n\n"}
   text=text.replace(/\n{3,}/g,"\n\n").trim();
@@ -1368,7 +1369,6 @@ With deepest sympathy,
 
 /* ---------- Photo to text (free on-device reading, same reader as scanned PDFs) ---------- */
 $("#photoBtn").hidden=false;$("#photoBtn").textContent="📷 Photo to text";
-$("#photo").setAttribute("capture","environment");
 $("#photoBtn").onclick=()=>$("#photo").click();
 $("#photo").onchange=async()=>{
   const f=$("#photo").files[0];$("#photo").value="";if(!f)return;
@@ -1391,8 +1391,9 @@ $("#photo").onchange=async()=>{
   const em=document.createElement("button");em.className="btn";em.id="mailShare";em.type="button";em.textContent="Email";
   $("#copyOut").after(wa,em);
   const text=()=>out.value.trim();
-  wa.onclick=()=>{if(!text())return toast("Write a letter first.");window.open("https://wa.me/?text="+encodeURIComponent(text()),"_blank","noopener")};
-  em.onclick=()=>{if(!text())return toast("Write a letter first.");
+  const pending=()=>/(^|\n)…(\n|$)/.test(out.value);
+  wa.onclick=()=>{if(!text())return toast("Write a letter first.");if(pending())return toast("Still translating. Wait a moment, then share.");window.open("https://wa.me/?text="+encodeURIComponent(text()),"_blank","noopener")};
+  em.onclick=()=>{if(!text())return toast("Write a letter first.");if(pending())return toast("Still translating. Wait a moment, then share.");
     const subj=(src.value.match(/^Subject:\s*(.+)$/m)||[])[1]||"Letter";
     location.href="mailto:?subject="+encodeURIComponent(subj)+"&body="+encodeURIComponent(text())};
 })();
@@ -1418,7 +1419,7 @@ $("#photo").onchange=async()=>{
   sel.innerHTML='<option value="">Insert phrase…</option>'+Object.entries(P).map(([g,list])=>`<optgroup label="${g}">`+list.map(p=>`<option>${p.replace(/&/g,"&amp;").replace(/</g,"&lt;")}</option>`).join("")+"</optgroup>").join("");
   const lab=document.createElement("label");lab.append(sel);$("#saveLetter").before(lab);
   sel.onchange=()=>{const p=sel.value;sel.value="";if(!p)return;
-    const a=src.selectionStart??src.value.length,b=src.selectionEnd??a;src.setRangeText(p,a,b,"end");src.focus();src.dispatchEvent(new Event("input",{bubbles:true}))};
+    const a=src.selectionStart??src.value.length,b=src.selectionEnd??a,pre=src.value.slice(0,a);src.setRangeText((pre&&!pre.endsWith("\n")?"\n":"")+p,a,b,"end");src.focus();src.dispatchEvent(new Event("input",{bubbles:true}))};
 })();
 })();
 </script>
