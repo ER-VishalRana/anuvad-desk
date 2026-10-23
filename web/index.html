@@ -125,19 +125,12 @@ footer{color:var(--muted);font-size:.82rem;margin-top:24px}
     </nav>
   </header>
 
-  <details class="lh" id="aiBox">
-    <summary>AI settings <span id="engineNote" style="color:var(--muted);font-weight:400"></span></summary>
-    <div class="lhgrid">
-      <label>Gemini API key (free, optional) <input type="text" id="gkey" placeholder="Paste your key here" autocomplete="off" spellcheck="false"></label>
-      <label>Gemini model <input type="text" id="gmodel" placeholder="gemini-2.5-flash-lite"></label>
-      <p class="hint" style="margin:0">Without a key the app still translates for free. A key adds formal letter style, Fix my English, Photo to text and Hinglish typing. Get one free at <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">aistudio.google.com/apikey</a>. It stays only in this browser.</p>
-    </div>
-  </details>
+  <div id="aiBox" hidden><span id="engineNote"></span><input id="gkey" hidden><input id="gmodel" hidden></div>
   <div class="toolbar">
     <label>Translate into
       <select id="lang"></select>
     </label>
-    <label>Style
+    <label hidden>Style
       <select id="style">
         <option value="formal">Formal letter</option>
         <option value="plain">Everyday</option>
@@ -168,7 +161,7 @@ footer{color:var(--muted);font-size:.82rem;margin-top:24px}
       <button class="btn" id="translateNow" title="Ctrl + Enter">Translate now</button>
       <button class="btn" id="photoBtn" hidden>Photo to text</button>
       <input type="file" id="photo" accept="image/jpeg,image/png,image/webp" hidden>
-      <button class="btn" id="polish">Fix my English</button>
+      <button class="btn" id="polish" hidden>Fix my English</button>
       <button class="btn" id="undoPolish" hidden>Undo fix</button>
       <span class="sep"></span>
       <button class="btn" id="saveLetter">Save letter</button>
@@ -254,7 +247,7 @@ footer{color:var(--muted);font-size:.82rem;margin-top:24px}
     </div>
   </section>
 
-  <footer>Free translation runs on your device in Chrome (desktop), or through the free MyMemory service. With a Gemini key, text goes to Google's Gemini. Files stay in your browser.</footer>
+  <footer>Free translation runs on your device in Chrome (desktop), or through the free MyMemory service. Files stay in your browser.</footer>
 </div>
 <div class="toast" id="toast" hidden></div>
 
@@ -267,7 +260,7 @@ const store = {get(k,d){try{const v=localStorage.getItem("anuvad:"+k);return v==
 /* ---------- UI helpers ---------- */
 const langSel=$("#lang"), styleSel=$("#style");
 for(const [en,nat] of LANGS){const o=document.createElement("option");o.value=en;o.textContent=en===nat?en:`${en} · ${nat}`;langSel.append(o)}
-langSel.value=store.get("lang","Hindi"); styleSel.value=store.get("style","formal");
+langSel.value=store.get("lang","Hindi"); styleSel.value="formal";
 let toastT; function toast(msg){const t=$("#toast");t.textContent=msg;t.hidden=false;clearTimeout(toastT);toastT=setTimeout(()=>t.hidden=true,3200)}
 function setStatus(kind,msg){const s=$("#status");s.className="status"+(kind?" "+kind:"");s.lastElementChild.textContent=msg}
 
@@ -295,7 +288,8 @@ function makeGemini(key,model){
   sample.limits=async()=>({maxPromptBytes:262144,images:{maxCount:10,maxInputBytes:2e7,mediaTypes:["image/jpeg","image/png","image/webp"]}});
   return sample;
 }
-const getSample=async()=>{const k=store.get("gkey","").trim();return k?makeGemini(k,store.get("gmodel","gemini-2.5-flash-lite")):null};
+// AI features (Gemini key) were removed from the web version on request, 2026-10-23: free translation only.
+const getSample=async()=>null;
 /* Inside the Android app (Capacitor) files are shared through Android's share sheet,
    and translation runs offline on the phone with Google ML Kit. */
 const NATIVE=!!window.Capacitor?.isNativePlatform?.();
@@ -310,7 +304,7 @@ async function nativeSave(filename,data){
 }
 const getDownloads=NATIVE?async()=>({save:({filename,data})=>nativeSave(filename,data)}):async()=>({save:async({filename,data})=>{const u=URL.createObjectURL(data instanceof Blob?data:new Blob([data]));const a=document.createElement("a");a.href=u;a.download=filename;document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),60000);return{status:"saved"}}});
 let blocked=false;
-const ERR={bad_key:"Your Gemini key was not accepted. Check it in AI settings.",needs_key:"This needs a free Gemini key. Add one in AI settings (top of the page).",rate_limited:"Too many requests just now. Wait a minute, then press Translate now.",refused:"The text could not be translated.",invalid_json:"The translation came back in a bad shape. Press Translate now to try again.",unavailable:"No translator is available. Use Chrome on a computer, or add a free Gemini key in AI settings."};
+const ERR={bad_key:"Your Gemini key was not accepted. Check it in AI settings.",needs_key:"This needs a free Gemini key. Add one in AI settings (top of the page).",rate_limited:"Too many requests just now. Wait a minute, then press Translate now.",refused:"The text could not be translated.",invalid_json:"The translation came back in a bad shape. Press Translate now to try again.",unavailable:"No translator is available right now. Check your internet connection, then press Translate now."};
 function errMsg(e){return ERR[e?.code]||"Translation failed. Check your internet and press Translate now."}
 
 let detector=null;const trs={};
@@ -660,7 +654,7 @@ $("#saveLetter").onclick=()=>{
 };
 let resumeOnType=false;
 savedSel.onchange=()=>{const l=letters().find(x=>x.id===savedSel.value);$("#delLetter").hidden=!l;if(!l)return;
-  langSel.value=l.lang;styleSel.value=l.style;paintLabel();src.value=l.src;out.value=l.out;
+  langSel.value=l.lang;styleSel.value="formal";paintLabel();src.value=l.src;out.value=l.out;
   outEdited=true;resumeOnType=true;$("#editedNote").hidden=true;store.set("draft",l.src);updateCount();setStatus("","Opened “"+l.title+"”")};
 src.addEventListener("input",()=>{if(resumeOnType){resumeOnType=false;outEdited=false;renderOut()}});
 $("#delLetter").onclick=()=>{const id=savedSel.value;if(!id)return;const btn=$("#delLetter");
@@ -684,7 +678,7 @@ async function readImages(images){
   const {text}=await sample(`Read all the text in the attached image(s) of a document, exactly as written and in its original language. Keep the line breaks, and put a blank line between paragraphs. Do not translate, summarise, explain or add anything. If several images are attached, they are pages in order. If there is no readable text, reply with exactly: NO_TEXT`,{images,modelTier:"default"});
   const t=text.trim();return t==="NO_TEXT"?"":t;
 }
-$("#photoBtn").hidden=false;
+
 $("#photoBtn").onclick=async()=>{if(!await getSample()){setStatus("err",ERR.needs_key);$("#aiBox").open=true;return}$("#photo").click()};
 $("#photo").onchange=async()=>{
   const f=$("#photo").files[0];$("#photo").value="";if(!f)return;
@@ -902,7 +896,7 @@ $("#pdfToLetter").onclick=async()=>{
   text=text.replace(/\n{3,}/g,"\n\n").trim();
   if(!text){
     const sample=await getSample();const lim=sample?await sample.limits().catch(()=>null):null;
-    if(!lim?.images){setStatus("err","This PDF is a scanned image. Reading it needs a free Gemini key (AI settings).");return}
+    if(!lim?.images){setStatus("err","This PDF is a scanned image. Scanned PDFs cannot be translated here; use a PDF that has real text.");return}
     setStatus("busy","This PDF is a scan. Reading the pages…");
     try{const imgs=await Promise.all(pdf.pages.slice(0,lim.images.maxCount).map(p=>new Promise(r=>p.canvas.toBlob(r,"image/jpeg",0.9))));
       text=await readImages(imgs);}catch(e){setStatus("err",errMsg(e));return}
