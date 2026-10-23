@@ -6,9 +6,9 @@
 <meta name="description" content="Write or speak in English and get your letter in Hindi or 20+ languages as you type. 30 ready letters, photo to text, WhatsApp share, PowerPoint and PDF editing.">
 <meta name="theme-color" content="#f5f7ff">
 <link rel="manifest" href="manifest.webmanifest">
-<link rel="icon" type="image/svg+xml" href="logo.svg?v=14">
-<link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png?v=14">
-<link rel="apple-touch-icon" href="icon-192.png?v=14">
+<link rel="icon" type="image/svg+xml" href="logo.svg?v=15">
+<link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png?v=15">
+<link rel="apple-touch-icon" href="icon-192.png?v=15">
 <title>Anuvad</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -180,14 +180,27 @@ footer{text-align:center}
 .userchip button{border-radius:999px!important}
 :focus-visible{outline:2px solid var(--accent2);outline-offset:2px}
 @media (prefers-reduced-motion:reduce){.btn,.drop{transition:none}.btn:hover:not([disabled]),.drop:hover{transform:none}#micBtn.on{animation:none}}
+#fbBtn{position:fixed;right:16px;bottom:16px;z-index:30;border:0;border-radius:999px;padding:10px 16px;background:var(--grad);color:#fff;font:inherit;font-weight:600;font-size:.9rem;box-shadow:0 10px 24px -10px rgba(30,41,59,.7);cursor:pointer}
+body.locked #fbBtn{display:none}
+#fbDlg{border:1px solid var(--line);border-radius:18px;padding:0;width:min(440px,calc(100vw - 32px));box-shadow:0 30px 60px -24px rgba(30,41,59,.45);color:var(--ink);background:#fff}
+#fbDlg::backdrop{background:rgba(15,23,42,.35)}
+#fbDlg form{padding:22px 20px;display:grid;gap:10px}
+#fbDlg h2{margin:0;font-family:var(--head,sans-serif);font-size:1.25rem}
+#fbDlg p{margin:0;color:var(--muted);font-size:.9rem}
+#fbDlg label{display:grid;gap:4px;font-size:.88rem;color:var(--muted)}
+#fbDlg input,#fbDlg textarea{font:inherit;padding:9px 11px;border:1px solid var(--line);border-radius:10px;color:var(--ink);background:#fff;width:100%;box-sizing:border-box}
+#fbDlg textarea{min-height:110px;resize:vertical}
+#fbDlg .row{display:flex;gap:10px;justify-content:flex-end;margin-top:4px}
+#fbDlg .err{color:var(--warn,#a4501b);font-size:.88rem;min-height:1.1em}
+#fbDlg .hp{position:absolute;left:-9999px;width:1px;height:1px;opacity:0}
 </style>
 
-<script src="auth.js?v=14"></script>
+<script src="auth.js?v=15"></script>
 </head>
 <body>
 <div class="wrap">
   <header class="bar">
-    <div class="brand"><img src="logo.svg?v=14" width="38" height="38" alt=""><b>Anuvad</b></div>
+    <div class="brand"><img src="logo.svg?v=15" width="38" height="38" alt=""><b>Anuvad</b></div>
     <nav class="tabs" role="tablist">
       <button role="tab" id="tab-letter" aria-selected="true" data-view="letter">Letter</button>
       <button role="tab" id="tab-ppt" aria-selected="false" data-view="ppt">PowerPoint</button>
@@ -199,6 +212,9 @@ footer{text-align:center}
   <div class="toolbar">
     <label>Translate into
       <select id="lang"></select>
+    </label>
+    <label id="genderBox">Writer is
+      <select id="gender"><option value="m">Male</option><option value="f">Female</option></select>
     </label>
     <label hidden>Style
       <select id="style">
@@ -406,17 +422,65 @@ const mlGot=new Set();
 async function mlEnsure(l){if(mlGot.has(l))return;const {languages=[]}=await NP.tr.getDownloadedModels().catch(()=>({}));languages.forEach(x=>mlGot.add(x));
   if(!mlGot.has(l)){setStatus("busy","Downloading the offline language pack (one time, about 30 MB)…");await NP.tr.downloadModel({language:l});mlGot.add(l)}}
 async function mlTranslate(text,s,t){await mlEnsure(s);await mlEnsure(t);setStatus("busy","Translating…");return (await NP.tr.translate({text,sourceLanguage:s,targetLanguage:t})).text}
+/* ---------- Formal Hindi letter phrases (English → Hindi) ---------- */
+const genderSel=$("#gender");genderSel.value=store.get("gender","m");
+const G=(m,f)=>()=>genderSel.value==="f"?f:m;
+const HI_LINES={
+"to":"सेवा में","to the principal":"सेवा में, प्रधानाचार्य महोदय","to the headmaster":"सेवा में, प्रधानाध्यापक महोदय",
+"the principal":"प्रधानाचार्य महोदय","principal":"प्रधानाचार्य महोदय","the headmaster":"प्रधानाध्यापक महोदय","the headmistress":"प्रधानाध्यापिका महोदया",
+"the branch manager":"शाखा प्रबंधक","the manager":"प्रबंधक महोदय","the station house officer":"थाना प्रभारी महोदय","the sho":"थाना प्रभारी महोदय",
+"the district collector":"जिलाधिकारी महोदय","the collector":"जिलाधिकारी महोदय","the commissioner":"आयुक्त महोदय","the editor":"संपादक महोदय",
+"the class teacher":"कक्षा अध्यापक महोदय","the hr manager":"मानव संसाधन प्रबंधक","the secretary":"सचिव महोदय","the chairman":"अध्यक्ष महोदय",
+"sir":"महोदय","madam":"महोदया","dear sir":"महोदय","dear madam":"महोदया","dear sir/madam":"महोदय/महोदया","dear sir or madam":"महोदय/महोदया",
+"respected sir":"आदरणीय महोदय","respected madam":"आदरणीय महोदया","respected ma'am":"आदरणीय महोदया",
+"yours faithfully":G("भवदीय","भवदीया"),"yours sincerely":G("भवदीय","भवदीया"),"yours truly":G("भवदीय","भवदीया"),"sincerely":G("भवदीय","भवदीया"),
+"faithfully":G("भवदीय","भवदीया"),"your faithfully":G("भवदीय","भवदीया"),
+"your obedient student":G("आपका आज्ञाकारी शिष्य","आपकी आज्ञाकारी शिष्या"),"your obedient pupil":G("आपका आज्ञाकारी शिष्य","आपकी आज्ञाकारी शिष्या"),
+"yours obediently":G("आपका आज्ञाकारी","आपकी आज्ञाकारी"),"your obedient servant":G("आपका आज्ञाकारी","आपकी आज्ञाकारी"),"your loving son":"आपका प्रिय पुत्र","your loving daughter":"आपकी प्रिय पुत्री",
+"applicant":G("प्रार्थी","प्रार्थिनी"),"the applicant":G("प्रार्थी","प्रार्थिनी"),"your applicant":G("आपका प्रार्थी","आपकी प्रार्थिनी"),
+"thanking you":"धन्यवाद सहित","thanking you in anticipation":"सधन्यवाद","thank you":"धन्यवाद","thanks":"धन्यवाद","thanks and regards":"धन्यवाद सहित",
+"regards":"सादर","with regards":"सादर","kind regards":"सादर","best regards":"सादर","warm regards":"सादर",
+"date":"दिनांक","place":"स्थान","enclosures":"संलग्नक","encl":"संलग्नक",
+"with due respect, i beg to state that":"सविनय निवेदन है कि","with due respect i beg to state that":"सविनय निवेदन है कि",
+"i beg to state that":"सविनय निवेदन है कि","most respectfully, i beg to state that":"सविनय निवेदन है कि","most respectfully i beg to state that":"सविनय निवेदन है कि"};
+const HI_LABELS=[["subject","विषय"],["sub","विषय"],["ref","संदर्भ"],["reference","संदर्भ"],["date","दिनांक"],["place","स्थान"],["name","नाम"],
+["address","पता"],["mobile","मोबाइल"],["mobile no","मोबाइल नंबर"],["phone","फ़ोन"],["contact","संपर्क"],["email","ईमेल"],["class","कक्षा"],["section","वर्ग"],
+["roll no","अनुक्रमांक"],["account no","खाता संख्या"],["account number","खाता संख्या"],["father's name","पिता का नाम"],["enclosures","संलग्नक"],["encl","संलग्नक"]];
+const HI_OPEN=[[/^(with due respect,?|most respectfully,?|respectfully,?)?\s*i beg to (state|say|inform you) that\s*/i,"सविनय निवेदन है कि "]];
+async function hiPhrase(line,tr1){
+  const lead=line.match(/^\s*/)[0],body=line.trim(),end=(body.match(/[,.:;]$/)||[""])[0];
+  const k=body.replace(/[,.:;]$/,"").replace(/\s+/g," ").toLowerCase();
+  const v=HI_LINES[k];if(v)return lead+(typeof v==="function"?v():v)+(end===","?",":"");
+  const lm=body.match(/^([A-Za-z' .]{2,16}?)\.?\s*:\s*(.*)$/);
+  if(lm){const lab=HI_LABELS.find(([e])=>e===lm[1].trim().toLowerCase());if(lab){const rest=lm[2].trim();
+    if(!rest)return lead+lab[1]+":";const keep=/^[\d\s\/.,:+()@-]+$|@|^[A-Z][a-z]+(\s[A-Z][a-z]+)*$/.test(rest)&&lab[0]!=="subject"&&lab[0]!=="sub";
+    return lead+lab[1]+": "+(keep?rest:await tr1(rest));}}
+  for(const [re,hi] of HI_OPEN){const m=body.match(re);if(m){const rest=body.slice(m[0].length);return lead+hi+(rest?await tr1(rest):"")}}
+  return null;
+}
+/* Fix gender of first-person verbs and use "।" at the end of Hindi sentences. */
+function hiPolish(t){
+  const f=genderSel.value==="f";
+  const pairs=[["रहा हूँ","रही हूँ"],["रहा हूं","रही हूं"],["चुका हूँ","चुकी हूँ"],["चुका हूं","चुकी हूं"],["गया हूँ","गई हूँ"],["गया हूं","गई हूं"],
+    ["हुआ हूँ","हुई हूँ"],["हुआ हूं","हुई हूं"],["आभारी रहूँगा","आभारी रहूँगी"],["आभारी रहूंगा","आभारी रहूंगी"],["आपका आभारी","आपकी आभारी"]];
+  for(const [m,w] of pairs)t=t.split(f?m:w).join(f?w:m);
+  t=f?t.replace(/([ऀ-ॿ]+)ता (हूँ|हूं)/g,"$1ती $2").replace(/([ऀ-ॿ]+)(ूँ|ूं|ऊँ|ऊं)गा(?![ऀ-ॿ])/g,"$1$2गी")
+     :t.replace(/([ऀ-ॿ]+)ती (हूँ|हूं)/g,"$1ता $2").replace(/([ऀ-ॿ]+)(ूँ|ूं|ऊँ|ऊं)गी(?![ऀ-ॿ])/g,"$1$2गा");
+  if(/मैं/.test(t))t=f?t.replace(/([ऀ-ॿ]+)ता था(?![ऀ-ॿ])/g,"$1ती थी").replace(/रहा था(?![ऀ-ॿ])/g,"रही थी"):t.replace(/([ऀ-ॿ]+)ती थी(?![ऀ-ॿ])/g,"$1ता था").replace(/रही थी(?![ऀ-ॿ])/g,"रहा था");
+  return t.replace(/([ऀ-ॿ)"'”’])\s*\.(?=\s|$)/g,"$1।").replace(/([ऀ-ॿ])\s*\|(?=\s|$)/g,"$1।");
+}
 async function freeTranslate(items,signal){
   const t=LCODE[langSel.value]||"hi";const res=[];
   for(const item of items){
     const s=await detectLang(item);if(s===t){res.push(item);continue}
     const lines=item.split("\n");const out=[];
     const useML=NATIVE&&MLKIT.has(s)&&MLKIT.has(t);const tr=useML?{translate:x=>mlTranslate(x,s,t)}:await chromeTranslator(s,t);
+    const tr1=async line=>{let r=null;if(tr){try{r=await within(tr.translate(line),useML?180000:15000)}catch{r=null}}
+      if(!r?.trim())r=await myMemory(line,s,t,signal);return r?.trim()?r:line};
     for(const line of lines){if(!line.trim()){out.push(line);continue}
       if(signal?.aborted)throw {code:"cancelled"};
-      let r=null;if(tr){try{r=await within(tr.translate(line),useML?180000:15000)}catch{r=null}}
-      if(!r?.trim())r=await myMemory(line,s,t,signal);
-      out.push(r?.trim()?r:line);}
+      let r=s==="en"&&t==="hi"?await hiPhrase(line,tr1):null;if(r==null)r=await tr1(line);
+      out.push(t==="hi"?hiPolish(r):r);}
     res.push(out.join("\n"));
   }
   return res;
@@ -583,15 +647,15 @@ const SEED_HI=[
 "सत्यापन के लिए मैंने अपने आधार कार्ड और पासबुक की प्रति संलग्न की है। कृपया इस कार्य को शीघ्र करने की कृपा करें।",
 "धन्यवाद सहित,",
 "भवदीय,\nरमेश कुमार\nदिनांक: 23 अक्टूबर 2026"];
-const cache=new Map(); const key=b=>langSel.value+"|"+styleSel.value+"|"+b;
+const cache=new Map(); const key=b=>langSel.value+"|"+styleSel.value+"|"+(langSel.value==="Hindi"?genderSel.value:"")+"|"+b;
 const splitBlocks=t=>t.split(/\n[ \t]*\n/).map(s=>s.replace(/\s+$/,""));
-splitBlocks(TPL.bank).forEach((b,i)=>cache.set("Hindi|formal|"+b,SEED_HI[i]));
+splitBlocks(TPL.bank).forEach((b,i)=>cache.set("Hindi|formal|m|"+b,SEED_HI[i]));
 
 const src=$("#src"), out=$("#out");
 let live=store.get("live",true), outEdited=false, ctl=null, timer=null, seq=0;
 function paintLive(){const b=$("#live");b.textContent="Live translate: "+(live?"On":"Off");b.classList.toggle("on",live);b.setAttribute("aria-pressed",String(live))}
 paintLive();
-function paintLabel(){const t=styleSel.value==="translit";$("#outLabel").textContent=t?"Hindi script":langSel.value;langSel.disabled=t}
+function paintLabel(){const t=styleSel.value==="translit";$("#outLabel").textContent=t?"Hindi script":langSel.value;langSel.disabled=t;$("#genderBox").hidden=langSel.value!=="Hindi"}
 paintLabel();
 src.value=store.get("draft",null)??TPL.bank;
 if(store.get("draft",null)==null) $("#tpl").value="bank"; else $("#tpl").value=store.get("tpl","blank");
@@ -623,6 +687,7 @@ $("#retranslate").onclick=()=>{outEdited=false;$("#editedNote").hidden=true;runT
 $("#translateNow").onclick=()=>{outEdited=false;$("#editedNote").hidden=true;blocked=false;runTranslate(true)};
 $("#live").onclick=()=>{live=!live;store.set("live",live);paintLive();if(live)schedule()};
 $("#tpl").onchange=e=>{src.value=TPL[e.target.value];store.set("tpl",e.target.value);outEdited=false;$("#editedNote").hidden=true;renderOut();schedule();src.focus()};
+genderSel.onchange=()=>{store.set("gender",genderSel.value);outEdited=false;$("#editedNote").hidden=true;renderOut();schedule()};
 langSel.onchange=()=>{store.set("lang",langSel.value);paintLabel();outEdited=false;$("#editedNote").hidden=true;renderOut();schedule()};
 styleSel.onchange=()=>{store.set("style",styleSel.value);paintLabel();outEdited=false;renderOut();schedule()};
 renderOut(); setStatus("", "Ready");
@@ -782,7 +847,7 @@ $("#sigDel").onclick=()=>{store.set("sig","");paintSig();toast("Signature remove
 /* ---------- Web extras: AI settings, print, install ---------- */
 function paintEngine(){const k=store.get("gkey","").trim();$("#engineNote").textContent=k?"· Gemini on":NATIVE?"· free, offline on this phone":"· free translation (no key)"}
 $("#gkey").value=store.get("gkey","");$("#gmodel").value=store.get("gmodel","");
-$("#gkey").addEventListener("input",()=>{store.set("gkey",$("#gkey").value.trim());blocked=false;cache.clear();splitBlocks(TPL.bank).forEach((b,i)=>cache.set("Hindi|formal|"+b,SEED_HI[i]));paintEngine()});
+$("#gkey").addEventListener("input",()=>{store.set("gkey",$("#gkey").value.trim());blocked=false;cache.clear();splitBlocks(TPL.bank).forEach((b,i)=>cache.set("Hindi|formal|m|"+b,SEED_HI[i]));paintEngine()});
 $("#gmodel").addEventListener("input",()=>store.set("gmodel",$("#gmodel").value.trim()||"gemini-2.5-flash-lite"));
 paintEngine();
 $("#printBtn").onclick=async()=>{
@@ -1492,5 +1557,42 @@ $("#photo").onchange=async()=>{
 })();
 </script>
 
+<button type="button" id="fbBtn">Feedback</button>
+<dialog id="fbDlg" aria-labelledby="fbTitle">
+  <form method="dialog" novalidate>
+    <h2 id="fbTitle">Feedback / Contact</h2>
+    <p>Found a mistake, want a new letter, or need help? Tell us.</p>
+    <label>Your name<input name="name" autocomplete="name" maxlength="120" required></label>
+    <label>Phone or WhatsApp<input name="phone" type="tel" autocomplete="tel" maxlength="20"></label>
+    <label>Email<input name="email" type="email" autocomplete="email" maxlength="160"></label>
+    <label>Message<textarea name="message" maxlength="4000" required></textarea></label>
+    <input class="hp" name="website" tabindex="-1" autocomplete="off" aria-hidden="true">
+    <div class="err" role="alert"></div>
+    <div class="row"><button type="button" class="btn" value="cancel" id="fbClose">Close</button><button class="btn primary" id="fbSend">Send</button></div>
+  </form>
+</dialog>
+<script>
+(function(){
+  const btn=document.getElementById("fbBtn"),dlg=document.getElementById("fbDlg"),form=dlg.querySelector("form"),err=dlg.querySelector(".err"),send=document.getElementById("fbSend");
+  const f=n=>form.elements[n];
+  btn.onclick=()=>{err.textContent="";if(!f("name").value){try{const s=JSON.parse(localStorage.getItem("anuvad-session")),u=JSON.parse(localStorage.getItem("anuvad-users"))[s.email];f("name").value=u.name;if(!f("email").value)f("email").value=u.email}catch{}}dlg.showModal();f(f("name").value?"message":"name").focus()};
+  document.getElementById("fbClose").onclick=()=>dlg.close();
+  form.onsubmit=async e=>{
+    e.preventDefault();err.textContent="";
+    const d={name:f("name").value.trim(),phone:f("phone").value.trim(),email:f("email").value.trim(),message:f("message").value.trim(),website:f("website").value,subject:"Anuvad feedback",page:location.href};
+    if(d.name.length<2)return err.textContent="Please enter your name.";
+    if(!d.phone&&!d.email)return err.textContent="Please give a phone number or an email address.";
+    if(!d.message)return err.textContent="Please write your message.";
+    send.disabled=true;send.textContent="Sending…";
+    try{
+      const r=await fetch("https://enquiries.alvvintechnology.com/api/enquiry",{method:"POST",headers:{"Content-Type":"application/json",Accept:"application/json"},body:JSON.stringify(d)});
+      const j=await r.json().catch(()=>({}));
+      if(r.ok&&j.ok){form.reset();dlg.close();btn.textContent="Thank you!";setTimeout(()=>btn.textContent="Feedback",4000);return}
+      err.textContent=j.errors?Object.values(j.errors).join(" "):(j.error||"Could not send just now. Please try again later.");
+    }catch{err.textContent="Could not send. Check your internet connection and try again."}
+    finally{send.disabled=false;send.textContent="Send"}
+  };
+})();
+</script>
 </body>
 </html>
