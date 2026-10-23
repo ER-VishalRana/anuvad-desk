@@ -194,6 +194,22 @@ body.locked #fbBtn{display:none}
 #fbDlg .row{display:flex;gap:10px;justify-content:flex-end;margin-top:4px}
 #fbDlg .err{color:var(--warn,#a4501b);font-size:.88rem;min-height:1.1em}
 #fbDlg .hp{position:absolute;left:-9999px;width:1px;height:1px;opacity:0}
+#meanPop{position:fixed;left:50%;transform:translateX(-50%);bottom:76px;z-index:40;background:#fff;border:1px solid var(--line);border-radius:14px;box-shadow:0 20px 40px -18px rgba(30,41,59,.45);padding:12px 40px 12px 16px;display:grid;gap:6px;max-width:min(420px,calc(100vw - 32px));font-size:.95rem}
+#meanPop b{font-size:1.1rem}
+#meanPop .formal{display:flex;align-items:center;gap:8px;flex-wrap:wrap;color:var(--muted)}
+#meanPop .x{position:absolute;right:8px;top:6px;border:0;background:none;font-size:1.3rem;cursor:pointer;color:var(--muted)}
+#meanHint{margin:6px 0 0;font-size:.82rem;color:var(--muted)}
+#shareDlg{border:1px solid var(--line);border-radius:18px;padding:0;width:min(380px,calc(100vw - 32px));color:var(--ink);background:#fff}
+#shareDlg::backdrop{background:rgba(15,23,42,.35)}
+#shareDlg .in{padding:22px 20px;display:grid;gap:12px;text-align:center}
+#shareDlg h2{margin:0;font-family:var(--head,sans-serif);font-size:1.25rem}
+#shareDlg p{margin:0;color:var(--muted);font-size:.9rem}
+#qr{width:200px;height:200px;margin:0 auto;display:grid;place-items:center;color:var(--muted)}
+#qr svg{width:100%;height:100%}
+#shareDlg input{font:inherit;padding:8px 10px;border:1px solid var(--line);border-radius:10px;text-align:center;width:100%;box-sizing:border-box}
+#shareDlg .row{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
+#findLetter{font:inherit;padding:7px 10px;border:1px solid var(--line);border-radius:10px;min-width:0;max-width:100%;width:12em;background:#fff;color:var(--ink)}
+@media (max-width:520px){#findLetter{flex:1 1 100%;width:auto}}
 </style>
 
 <script src="auth.js?v=17"></script>
@@ -216,6 +232,9 @@ body.locked #fbBtn{display:none}
     </label>
     <label id="genderBox">Writer is
       <select id="gender"><option value="m">Male</option><option value="f">Female</option></select>
+    </label>
+    <label id="digitsBox">Numbers
+      <select id="digits"><option value="en">123</option><option value="deva">१२३</option></select>
     </label>
     <label hidden>Style
       <select id="style">
@@ -253,6 +272,8 @@ body.locked #fbBtn{display:none}
       <span class="sep"></span>
       <button class="btn" id="saveLetter">Save letter</button>
       <label>My letters <select id="saved"><option value="">None saved yet</option></select></label>
+      <label>Folder <select id="folder"><option value="">All folders</option><option>Bank</option><option>School &amp; college</option><option>Job</option><option>Government</option><option>Police</option><option>Personal</option><option>Other</option></select></label>
+      <input type="search" id="findLetter" placeholder="Search my letters" aria-label="Search my letters">
       <button class="btn" id="delLetter" hidden>Delete</button>
     </div>
     <details class="lh" id="lhBox">
@@ -454,11 +475,16 @@ async function hiPhrase(line,tr1){
   const v=HI_LINES[k];if(v)return lead+(typeof v==="function"?v():v)+(end===","?",":"");
   const lm=body.match(/^([A-Za-z' .]{2,16}?)\.?\s*:\s*(.*)$/);
   if(lm){const lab=HI_LABELS.find(([e])=>e===lm[1].trim().toLowerCase());if(lab){const rest=lm[2].trim();
-    if(!rest)return lead+lab[1]+":";const keep=/^[\d\s\/.,:+()@-]+$|@|^[A-Z][a-z]+(\s[A-Z][a-z]+)*$/.test(rest)&&lab[0]!=="subject"&&lab[0]!=="sub";
+    if(!rest)return lead+lab[1]+":";if(lab[0]==="date")return lead+lab[1]+": "+hiMonths(rest);const keep=/^[\d\s\/.,:+()@-]+$|@|^[A-Z][a-z]+(\s[A-Z][a-z]+)*$/.test(rest)&&lab[0]!=="subject"&&lab[0]!=="sub";
     return lead+lab[1]+": "+(keep?rest:await tr1(rest));}}
   for(const [re,hi] of HI_OPEN){const m=body.match(re);if(m){const rest=body.slice(m[0].length);return lead+hi+(rest?await tr1(rest):"")}}
   return null;
 }
+const HI_MONTHS={january:"जनवरी",february:"फ़रवरी",march:"मार्च",april:"अप्रैल",may:"मई",june:"जून",july:"जुलाई",august:"अगस्त",september:"सितंबर",october:"अक्टूबर",november:"नवंबर",december:"दिसंबर",
+  jan:"जनवरी",feb:"फ़रवरी",mar:"मार्च",apr:"अप्रैल",jun:"जून",jul:"जुलाई",aug:"अगस्त",sep:"सितंबर",sept:"सितंबर",oct:"अक्टूबर",nov:"नवंबर",dec:"दिसंबर"};
+const hiMonths=t=>t.replace(/\b(January|February|March|April|May|June|July|August|September|October|November|December|Jan|Feb|Mar|Apr|Jun|Jul|Aug|Sept?|Oct|Nov|Dec)\b\.?/g,m=>HI_MONTHS[m.replace(".","").toLowerCase()]);
+const digitsSel=$("#digits");digitsSel.value=store.get("digits","en");
+const devaDigits=t=>t.replace(/[0-9]/g,d=>"०१२३४५६७८९"[d]);
 /* Fix gender of first-person verbs and use "।" at the end of Hindi sentences. */
 function hiPolish(t){
   const f=genderSel.value==="f";
@@ -468,19 +494,44 @@ function hiPolish(t){
   t=f?t.replace(/([ऀ-ॿ]+)ता (हूँ|हूं)/g,"$1ती $2").replace(/([ऀ-ॿ]+)(ूँ|ूं|ऊँ|ऊं)गा(?![ऀ-ॿ])/g,"$1$2गी")
      :t.replace(/([ऀ-ॿ]+)ती (हूँ|हूं)/g,"$1ता $2").replace(/([ऀ-ॿ]+)(ूँ|ूं|ऊँ|ऊं)गी(?![ऀ-ॿ])/g,"$1$2गा");
   if(/मैं/.test(t))t=f?t.replace(/([ऀ-ॿ]+)ता था(?![ऀ-ॿ])/g,"$1ती थी").replace(/रहा था(?![ऀ-ॿ])/g,"रही थी"):t.replace(/([ऀ-ॿ]+)ती थी(?![ऀ-ॿ])/g,"$1ता था").replace(/रही थी(?![ऀ-ॿ])/g,"रहा था");
-  return t.replace(/([ऀ-ॿ)"'”’])\s*\.(?=\s|$)/g,"$1।").replace(/([ऀ-ॿ])\s*\|(?=\s|$)/g,"$1।");
+  t=t.replace(/([ऀ-ॿ)"'”’])\s*\.(?=\s|$)/g,"$1।").replace(/([ऀ-ॿ])\s*\|(?=\s|$)/g,"$1।");
+  if(/(^|\s)\d{1,2}(st|nd|rd|th)?\s+[A-Z][a-z]{2,8}\.?\s+\d{4}|[A-Z][a-z]{2,8}\.?\s+\d{1,2},?\s+\d{4}/.test(t))t=hiMonths(t);
+  return digitsSel.value==="deva"?devaDigits(t):t;
 }
+/* Hindi → English: the same letter phrases the other way round. */
+const EN_LINES={"सेवा में":"To","महोदय":"Sir","महोदया":"Madam","आदरणीय महोदय":"Respected Sir","आदरणीय महोदया":"Respected Madam","महोदय/महोदया":"Dear Sir/Madam",
+"भवदीय":"Yours faithfully","भवदीया":"Yours faithfully","विनीत":"Yours sincerely","धन्यवाद सहित":"Thanking you","सधन्यवाद":"Thanking you","धन्यवाद":"Thank you","सादर":"Regards",
+"आपका आज्ञाकारी शिष्य":"Your obedient student","आपकी आज्ञाकारी शिष्या":"Your obedient student","आपका आज्ञाकारी":"Yours obediently","आपकी आज्ञाकारी":"Yours obediently",
+"प्रार्थी":"Applicant","प्रार्थिनी":"Applicant","प्रधानाचार्य महोदय":"The Principal","प्रधानाध्यापक महोदय":"The Headmaster","शाखा प्रबंधक":"The Branch Manager","थाना प्रभारी महोदय":"The Station House Officer","जिलाधिकारी महोदय":"The District Collector"};
+const EN_LABELS={"विषय":"Subject","संदर्भ":"Ref","दिनांक":"Date","तारीख":"Date","स्थान":"Place","नाम":"Name","पता":"Address","मोबाइल":"Mobile","मोबाइल नंबर":"Mobile No.","फ़ोन":"Phone","फोन":"Phone","ईमेल":"Email","कक्षा":"Class","अनुक्रमांक":"Roll No.","खाता संख्या":"Account No.","संलग्नक":"Enclosures"};
+const EN_MONTHS=Object.fromEntries(Object.entries(HI_MONTHS).filter(([k])=>k.length>3||k==="may").map(([k,v])=>[v,k[0].toUpperCase()+k.slice(1)]));
+async function enPhrase(line,tr1){
+  const lead=line.match(/^\s*/)[0],body=line.trim(),end=(body.match(/[,।.:;]$/)||[""])[0];
+  const k=body.replace(/[,।.:;]$/,"").replace(/\s+/g," ");
+  if(EN_LINES[k])return lead+EN_LINES[k]+(end===","?",":"");
+  if(/^सविनय निवेदन है कि\s*/.test(body)){const rest=body.replace(/^सविनय निवेदन है कि\s*/,"");return lead+"With due respect, I beg to state that "+(rest?await tr1(rest):"")}
+  const lm=body.match(/^([ऀ-ॿ ]{2,16}?)\s*:\s*(.*)$/);
+  if(lm&&EN_LABELS[lm[1].trim()]){const lab=EN_LABELS[lm[1].trim()],rest=lm[2].trim();if(!rest)return lead+lab+":";
+    const fixed=rest.replace(/[०-९]/g,d=>"०१२३४५६७८९".indexOf(d)).replace(/[ऀ-ॿ]+/g,w=>EN_MONTHS[w]||w);
+    return lead+lab+": "+(/[ऀ-ॿ]/.test(fixed)&&lab!=="Name"?await tr1(rest):fixed)}
+  return null;
+}
+/* Hindi written in English letters ("mera naam Ramesh hai") is sent as Hindi. */
+const HINGLISH=/\b(hai|hain|hoon|hu|mera|meri|mere|aap|aapka|aapki|kya|nahi|nahin|kripya|mujhe|hum|humara|karna|karta|karti|raha|rahi|chahiye|ke liye|kal|aaj|bahut|dhanyavad|kyunki|lekin|aur|main)\b/gi;
+const isHinglish=t=>!/[^\x00-\x7F]/.test(t)&&(t.match(HINGLISH)||[]).length>=2;
 async function freeTranslate(items,signal){
   const t=LCODE[langSel.value]||"hi";const res=[];
   for(const item of items){
-    const s=await detectLang(item);if(s===t){res.push(item);continue}
+    let s=await detectLang(item);
+    if(s==="en"&&t!=="hi"&&isHinglish(item))s="hi";
+    if(s===t){res.push(item);continue}
     const lines=item.split("\n");const out=[];
     const useML=NATIVE&&MLKIT.has(s)&&MLKIT.has(t);const tr=useML?{translate:x=>mlTranslate(x,s,t)}:await chromeTranslator(s,t);
-    const tr1=async line=>{let r=null;if(tr){try{r=await within(tr.translate(line),useML?180000:15000)}catch{r=null}}
+    const tr1=async line=>{let r=null;if(tr&&!(s==="hi"&&!/[ऀ-ॿ]/.test(line))){try{r=await within(tr.translate(line),useML?180000:15000)}catch{r=null}}
       if(!r?.trim())r=await myMemory(line,s,t,signal);return r?.trim()?r:line};
     for(const line of lines){if(!line.trim()){out.push(line);continue}
       if(signal?.aborted)throw {code:"cancelled"};
-      let r=s==="en"&&t==="hi"?await hiPhrase(line,tr1):null;if(r==null)r=await tr1(line);
+      let r=s==="en"&&t==="hi"?await hiPhrase(line,tr1):s==="hi"&&t==="en"?await enPhrase(line,tr1):null;if(r==null)r=await tr1(line);
       out.push(t==="hi"?hiPolish(r):r);}
     res.push(out.join("\n"));
   }
@@ -648,7 +699,7 @@ const SEED_HI=[
 "सत्यापन के लिए मैंने अपने आधार कार्ड और पासबुक की प्रति संलग्न की है। कृपया इस कार्य को शीघ्र करने की कृपा करें।",
 "धन्यवाद सहित,",
 "भवदीय,\nरमेश कुमार\nदिनांक: 23 अक्टूबर 2026"];
-const cache=new Map(); const key=b=>langSel.value+"|"+styleSel.value+"|"+(langSel.value==="Hindi"?genderSel.value:"")+"|"+b;
+const cache=new Map(); const key=b=>langSel.value+"|"+styleSel.value+"|"+(langSel.value==="Hindi"?genderSel.value+(digitsSel.value==="deva"?"d":""):"")+"|"+b;
 const splitBlocks=t=>t.split(/\n[ \t]*\n/).map(s=>s.replace(/\s+$/,""));
 splitBlocks(TPL.bank).forEach((b,i)=>cache.set("Hindi|formal|m|"+b,SEED_HI[i]));
 
@@ -656,7 +707,7 @@ const src=$("#src"), out=$("#out");
 let live=store.get("live",true), outEdited=false, ctl=null, timer=null, seq=0;
 function paintLive(){const b=$("#live");b.textContent="Live translate: "+(live?"On":"Off");b.classList.toggle("on",live);b.setAttribute("aria-pressed",String(live))}
 paintLive();
-function paintLabel(){const t=styleSel.value==="translit";$("#outLabel").textContent=t?"Hindi script":langSel.value;langSel.disabled=t;$("#genderBox").hidden=langSel.value!=="Hindi"}
+function paintLabel(){const t=styleSel.value==="translit";$("#outLabel").textContent=t?"Hindi script":langSel.value;langSel.disabled=t;$("#genderBox").hidden=$("#digitsBox").hidden=langSel.value!=="Hindi"}
 paintLabel();
 src.value=store.get("draft",null)??TPL.bank;
 if(store.get("draft",null)==null) $("#tpl").value="bank"; else $("#tpl").value=store.get("tpl","blank");
@@ -688,6 +739,7 @@ $("#retranslate").onclick=()=>{outEdited=false;$("#editedNote").hidden=true;runT
 $("#translateNow").onclick=()=>{outEdited=false;$("#editedNote").hidden=true;blocked=false;runTranslate(true)};
 $("#live").onclick=()=>{live=!live;store.set("live",live);paintLive();if(live)schedule()};
 $("#tpl").onchange=e=>{src.value=TPL[e.target.value];store.set("tpl",e.target.value);outEdited=false;$("#editedNote").hidden=true;renderOut();schedule();src.focus()};
+digitsSel.onchange=()=>{store.set("digits",digitsSel.value);outEdited=false;$("#editedNote").hidden=true;renderOut();schedule()};
 genderSel.onchange=()=>{store.set("gender",genderSel.value);outEdited=false;$("#editedNote").hidden=true;renderOut();schedule()};
 langSel.onchange=()=>{store.set("lang",langSel.value);paintLabel();outEdited=false;$("#editedNote").hidden=true;renderOut();schedule()};
 styleSel.onchange=()=>{store.set("style",styleSel.value);paintLabel();outEdited=false;renderOut();schedule()};
@@ -778,17 +830,25 @@ $("#undoPolish").onclick=()=>{if(beforePolish==null)return;src.value=beforePolis
 /* Saved letters live in this browser only. */
 const savedSel=$("#saved");
 function letters(){return store.get("letters",[])}
-function paintSaved(selId){const list=letters();savedSel.replaceChildren();
-  const o0=document.createElement("option");o0.value="";o0.textContent=list.length?`Choose (${list.length})`:"None saved yet";savedSel.append(o0);
-  for(const l of list){const o=document.createElement("option");o.value=l.id;o.textContent=`${l.title} · ${l.lang}`;savedSel.append(o)}
+const folderSel=$("#folder"),findBox=$("#findLetter");folderSel.value=store.get("folder","");
+function guessFolder(t){const x=t.toLowerCase();
+  return /\bbank|account|atm|kyc|cheque|passbook|loan\b/.test(x)?"Bank":/principal|school|college|class teacher|scholarship|transfer certificate|bonafide|student/.test(x)?"School & college":
+    /police|station house|fir\b|complaint.*(theft|lost|stolen)|sho\b/.test(x)?"Police":/resign|salary|leave|experience letter|hr manager|job|interview|employ/.test(x)?"Job":
+    /electricity|water|road|collector|municipal|rti|gas|noc|commissioner|government|department/.test(x)?"Government":/dear (friend|mother|father|brother|sister)|invitation|condolence/.test(x)?"Personal":"Other"}
+function paintSaved(selId){const all=letters();savedSel.replaceChildren();
+  const q=findBox.value.trim().toLowerCase(),fo=folderSel.value;
+  const list=all.filter(l=>(!fo||(l.folder||guessFolder(l.src))===fo)&&(!q||(l.title+"\n"+l.src+"\n"+l.out).toLowerCase().includes(q)));
+  const o0=document.createElement("option");o0.value="";o0.textContent=all.length?(list.length?`Choose (${list.length})`:"No letters match"):"None saved yet";savedSel.append(o0);
+  for(const l of list){const o=document.createElement("option");o.value=l.id;o.textContent=`${l.title} · ${l.lang}${fo?"":" · "+(l.folder||guessFolder(l.src))}`;savedSel.append(o)}
   savedSel.value=selId||"";$("#delLetter").hidden=!savedSel.value}
 paintSaved();
+folderSel.onchange=()=>{store.set("folder",folderSel.value);paintSaved()};findBox.oninput=()=>paintSaved();
 function titleOf(t){const m=t.match(/Subject:\s*(.+)/i);const line=(m?m[1]:t.split("\n").find(x=>x.trim())||"Untitled").trim();return line.length>42?line.slice(0,42).replace(/\s+\S*$/,"")+"…":line}
 $("#saveLetter").onclick=()=>{
   if(!src.value.trim())return toast("Nothing to save yet.");
   const list=letters();const cur=savedSel.value&&list.find(l=>l.id===savedSel.value);
-  const rec={id:cur?cur.id:String(Date.now()),title:titleOf(src.value),src:src.value,out:out.value,lang:langSel.value,style:styleSel.value,ts:Date.now()};
-  const next=cur?list.map(l=>l.id===cur.id?rec:l):[rec,...list];store.set("letters",next);paintSaved(rec.id);toast(cur?"Letter updated":"Letter saved in this browser");
+  const rec={id:cur?cur.id:String(Date.now()),title:titleOf(src.value),src:src.value,out:out.value,lang:langSel.value,style:styleSel.value,ts:Date.now(),folder:folderSel.value||(cur&&cur.folder)||guessFolder(src.value)};
+  const next=cur?list.map(l=>l.id===cur.id?rec:l):[rec,...list];store.set("letters",next);paintSaved(rec.id);toast((cur?"Letter updated":"Letter saved")+" in "+rec.folder);
 };
 let resumeOnType=false;
 savedSel.onchange=()=>{const l=letters().find(x=>x.id===savedSel.value);$("#delLetter").hidden=!l;if(!l)return;
@@ -943,7 +1003,7 @@ $("#pptSave").onclick=async()=>{
 };
 
 /* ---------- PDF ---------- */
-pdfjsLib.GlobalWorkerOptions.workerSrc="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
+if(window.pdfjsLib)pdfjsLib.GlobalWorkerOptions.workerSrc="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js";
 let pdf=null, mode=null, sel=null; // pdf={doc,name,pages:[{w,h,el,canvas,items:[]}]}
 function setMode(m){mode=mode===m?null:m;$("#modeText").classList.toggle("on",mode==="text");$("#modeWhite").classList.toggle("on",mode==="white");$("#modeText").setAttribute("aria-pressed",String(mode==="text"));$("#modeWhite").setAttribute("aria-pressed",String(mode==="white"));pdf?.pages.forEach(p=>{p.el.classList.toggle("mode-text",mode==="text");p.el.classList.toggle("mode-white",mode==="white")})}
 $("#modeText").onclick=()=>setMode("text");$("#modeWhite").onclick=()=>setMode("white");
@@ -1554,6 +1614,68 @@ $("#photo").onchange=async()=>{
   const lab=document.createElement("label");lab.append(sel);$("#saveLetter").before(lab);
   sel.onchange=()=>{const p=sel.value;sel.value="";if(!p)return;
     const a=src.selectionStart??src.value.length,b=src.selectionEnd??a,pre=src.value.slice(0,a);src.setRangeText((pre&&!pre.endsWith("\n")?"\n":"")+p,a,b,"end");src.focus();src.dispatchEvent(new Event("input",{bubbles:true}))};
+})();
+
+const loadScript=src=>new Promise((ok,bad)=>{if(document.querySelector(`script[src="${src}"]`)&&loadScript[src])return ok();const sc=document.createElement("script");sc.src=src;sc.onload=()=>{loadScript[src]=1;ok()};sc.onerror=()=>{sc.remove();bad(new Error("load"))};document.head.appendChild(sc)});
+
+/* ---------- Swap: turn the translation into the text you write ---------- */
+(function swap(){
+  const b=document.createElement("button");b.className="btn";b.type="button";b.id="swapBtn";b.textContent="⇄ Swap";b.title="Use the translation as your text and translate it back";
+  $("#translateNow").after(b);
+  const NAME=Object.fromEntries(Object.entries(LCODE).map(([n,c])=>[c,n]));
+  b.onclick=async()=>{const o=out.value.trim();if(!o||/(^|\n)…(\n|$)/.test(out.value))return toast("Wait for the translation first.");
+    const from=await detectLang(src.value||"a");const back=NAME[isHinglish(src.value)?"hi":from]||"English";
+    src.value=out.value;langSel.value=back===langSel.value?"English":back;store.set("lang",langSel.value);paintLabel();store.set("draft",src.value);updateCount();
+    outEdited=false;$("#editedNote").hidden=true;renderOut();schedule();toast("Now translating into "+langSel.value)};
+})();
+
+/* ---------- Word meaning: double-click (or select) a word ---------- */
+(function meaning(){
+  const FORMAL={"छुट्टी":"अवकाश","मदद":"सहायता","काम":"कार्य","जल्दी":"शीघ्र","जरूरी":"आवश्यक","ज़रूरी":"आवश्यक","इजाज़त":"अनुमति","इजाजत":"अनुमति","शुक्रिया":"धन्यवाद","दरख्वास्त":"प्रार्थना-पत्र","अर्जी":"प्रार्थना-पत्र",
+    "तनख्वाह":"वेतन","पैसे":"राशि","बीमार":"अस्वस्थ","बीमारी":"अस्वस्थता","खत":"पत्र","चिट्ठी":"पत्र","इंतज़ार":"प्रतीक्षा","इंतजार":"प्रतीक्षा","कोशिश":"प्रयास","मुश्किल":"कठिनाई","शिकायत":"परिवाद","जवाब":"उत्तर",
+    "सवाल":"प्रश्न","वजह":"कारण","हाल":"स्थिति","दिक्कत":"असुविधा","परेशानी":"असुविधा","तारीख":"दिनांक","साल":"वर्ष","महीना":"माह","हफ्ता":"सप्ताह","हफ़्ता":"सप्ताह","ज़िंदगी":"जीवन","इलाज":"उपचार","कागज़":"दस्तावेज़","कागजात":"दस्तावेज़"};
+  const pop=document.createElement("div");pop.id="meanPop";pop.hidden=true;pop.setAttribute("role","dialog");pop.setAttribute("aria-label","Word meaning");
+  document.body.append(pop);
+  let cur=null;
+  async function look(ta){
+    const a=ta.selectionStart,b=ta.selectionEnd,w=ta.value.slice(a,b).trim().replace(/[।,.;:!?"'()]+$/,"");
+    if(!w||w.length>40||w.split(/\s+/).length>3){pop.hidden=true;return}
+    cur={ta,a,b,w};const hi=/[ऀ-ॿ]/.test(w),s=hi?"hi":"en",t=hi?"en":"hi";
+    pop.replaceChildren();const h=document.createElement("b");h.textContent=w;const m=document.createElement("span");m.textContent="Looking up…";pop.append(h,m);pop.hidden=false;
+    const formal=hi&&FORMAL[w];
+    if(formal){const f=document.createElement("div");f.className="formal";f.append("More formal: ");const fb=document.createElement("button");fb.className="btn";fb.type="button";fb.textContent="Use “"+formal+"”";
+      fb.onclick=()=>{const {ta,a,b}=cur;const raw=ta.value.slice(a,b);ta.setRangeText(raw.replace(w,formal),a,b,"end");ta.dispatchEvent(new Event("input",{bubbles:true}));pop.hidden=true};f.append(fb);pop.append(f)}
+    const x=document.createElement("button");x.className="x";x.type="button";x.textContent="×";x.setAttribute("aria-label","Close");x.onclick=()=>pop.hidden=true;pop.append(x);
+    try{let r=null;const tr=await chromeTranslator(s,t);if(tr){try{r=await within(tr.translate(w),6000)}catch{}}
+      if(!r?.trim())r=await myMemory(w,s,t);if(cur?.w!==w)return;m.textContent=(hi?"English: ":"Hindi: ")+(r||"not found")}
+    catch{if(cur?.w===w)m.textContent="Could not look this up. Check your internet."}
+  }
+  for(const ta of [out,src])ta.addEventListener("dblclick",()=>setTimeout(()=>look(ta),10));
+  out.addEventListener("keyup",e=>{if(e.key==="Shift")look(out)});
+  document.addEventListener("keydown",e=>{if(e.key==="Escape")pop.hidden=true});
+  document.addEventListener("pointerdown",e=>{if(!pop.contains(e.target)&&e.target!==out&&e.target!==src)pop.hidden=true});
+  const hint=document.createElement("p");hint.className="hint";hint.id="meanHint";hint.textContent="Tip: double-click any word to see its meaning.";
+  $("#out").after(hint);
+})();
+
+/* ---------- Share Varnum (link + QR code) ---------- */
+(function shareApp(){
+  const URL_="https://varnum.alvvintechnology.com/";
+  const b=document.createElement("button");b.className="btn";b.type="button";b.id="shareApp";b.textContent="Share app";
+  $("#status").before(b);
+  const d=document.createElement("dialog");d.id="shareDlg";
+  d.innerHTML=`<div class="in"><h2>Share Varnum</h2><p>Scan the code or send the link. Free to use.</p><div id="qr" aria-label="QR code for ${URL_}"></div>
+  <input readonly value="${URL_}" aria-label="Link"><div class="row"><button type="button" class="btn" id="shCopy">Copy link</button><button type="button" class="btn" id="shWa">WhatsApp</button><button type="button" class="btn" id="shMore" hidden>More…</button><button type="button" class="btn primary" id="shClose">Close</button></div></div>`;
+  document.body.append(d);
+  const msg="Write letters in Hindi and 20+ languages for free with Varnum: "+URL_;
+  let qrDone=false;
+  b.onclick=async()=>{d.showModal();if(qrDone)return;
+    try{await loadScript("https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js");const q=qrcode(0,"M");q.addData(URL_);q.make();$("#qr").innerHTML=q.createSvgTag({cellSize:5,margin:2,scalable:true});qrDone=true}
+    catch{$("#qr").textContent="QR code needs internet."}};
+  $("#shCopy").onclick=async()=>{try{await navigator.clipboard.writeText(URL_);toast("Link copied")}catch{d.querySelector("input").select()}};
+  $("#shWa").onclick=()=>window.open("https://wa.me/?text="+encodeURIComponent(msg),"_blank","noopener");
+  if(navigator.share){$("#shMore").hidden=false;$("#shMore").onclick=()=>navigator.share({title:"Varnum",text:msg,url:URL_}).catch(()=>{})}
+  $("#shClose").onclick=()=>d.close();
 })();
 })();
 </script>
