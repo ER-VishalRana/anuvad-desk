@@ -127,7 +127,7 @@
     if (!on && orig.has(n) && mine.get(n) !== raw) { orig.delete(n); return; } // the app changed it since
     const t = raw.trim(); if (!t) return;
     if (on) { const h = tr(t); if (h) { orig.set(n, raw); const v = raw.replace(t, h); mine.set(n, v); n.textContent = v; } }
-    else if (orig.has(n)) { const v = orig.get(n); orig.delete(n); mine.set(n, v); n.textContent = v; }
+    else if (orig.has(n)) { const v = orig.get(n); orig.delete(n); mine.delete(n); n.textContent = v; }
   }
   function doAttrs(el) {
     if (el.closest(SKIP) && !el.matches("#src,#out,#lang")) return;

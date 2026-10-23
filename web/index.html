@@ -7,9 +7,9 @@
 <meta name="varnum-api" content="https://varnum-api.alvvintechnology.com">
 <meta name="theme-color" content="#f5f7ff">
 <link rel="manifest" href="manifest.webmanifest">
-<link rel="icon" type="image/svg+xml" href="logo.svg?v=19">
-<link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png?v=19">
-<link rel="apple-touch-icon" href="icon-192.png?v=19">
+<link rel="icon" type="image/svg+xml" href="logo.svg?v=20">
+<link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png?v=20">
+<link rel="apple-touch-icon" href="icon-192.png?v=20">
 <title>Varnum · Write letters in Hindi, free</title>
 <link rel="canonical" href="https://varnum.alvvintechnology.com/">
 <meta property="og:title" content="Varnum · Write letters in Hindi, free">
@@ -232,12 +232,12 @@ body.locked #fbBtn{display:none}
 #syncNote{margin:0 0 12px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 </style>
 
-<script src="auth.js?v=19"></script>
+<script src="auth.js?v=20"></script>
 </head>
 <body>
 <div class="wrap">
   <header class="bar">
-    <div class="brand"><img src="logo.svg?v=19" width="38" height="38" alt=""><b>Varnum</b></div>
+    <div class="brand"><img src="logo.svg?v=20" width="38" height="38" alt=""><b>Varnum</b></div>
     <nav class="tabs" role="tablist">
       <button role="tab" id="tab-letter" aria-selected="true" data-view="letter">Letter</button>
       <button role="tab" id="tab-word" aria-selected="false" data-view="word">Word</button>
@@ -491,7 +491,8 @@ async function mlTranslate(text,s,t){await mlEnsure(s);await mlEnsure(t);setStat
 const genderSel=$("#gender");genderSel.value=store.get("gender","m");
 const G=(m,f)=>()=>genderSel.value==="f"?f:m;
 const HI_LINES={
-"to":"सेवा में","to the principal":"सेवा में, प्रधानाचार्य महोदय","to the headmaster":"सेवा में, प्रधानाध्यापक महोदय",
+"to":"सेवा में","dear":"प्रिय","leave application":"अवकाश हेतु प्रार्थना-पत्र","application for leave":"अवकाश हेतु प्रार्थना-पत्र","name":"नाम","class":"कक्षा","subject":"विषय","address":"पता",
+"father's name":"पिता का नाम","mother's name":"माता का नाम","roll no":"अनुक्रमांक","roll number":"अनुक्रमांक","signature":"हस्ताक्षर","mobile":"मोबाइल","phone":"फ़ोन","school":"विद्यालय","section":"वर्ग","date of birth":"जन्म तिथि","to the principal":"सेवा में, प्रधानाचार्य महोदय","to the headmaster":"सेवा में, प्रधानाध्यापक महोदय",
 "the principal":"प्रधानाचार्य महोदय","principal":"प्रधानाचार्य महोदय","the headmaster":"प्रधानाध्यापक महोदय","the headmistress":"प्रधानाध्यापिका महोदया",
 "the branch manager":"शाखा प्रबंधक","the manager":"प्रबंधक महोदय","the station house officer":"थाना प्रभारी महोदय","the sho":"थाना प्रभारी महोदय",
 "the district collector":"जिलाधिकारी महोदय","the collector":"जिलाधिकारी महोदय","the commissioner":"आयुक्त महोदय","the editor":"संपादक महोदय",
@@ -520,6 +521,10 @@ async function hiPhrase(line,tr1){
   if(lm){const lab=HI_LABELS.find(([e])=>e===lm[1].trim().toLowerCase());if(lab){const rest=lm[2].trim();
     if(!rest)return lead+lab[1]+":";if(lab[0]==="date")return lead+lab[1]+": "+hiMonths(rest);const keep=/^[\d\s\/.,:+()@-]+$|@|^[A-Z][a-z]+(\s[A-Z][a-z]+)*$/.test(rest)&&lab[0]!=="subject"&&lab[0]!=="sub";
     return lead+lab[1]+": "+(keep?rest:await tr1(rest));}}
+  const dm=body.match(/^(dear|respected|my dear)\s+(.+?),?$/i);
+  if(dm&&!/\b(sir|madam|ma'am)\b/i.test(dm[2])&&words(dm[2])<=4){const who=dm[2].trim(),g=dm[1].toLowerCase();
+    const title=/^(friend|mother|father|brother|sister|teacher|son|daughter)$/i.test(who)?await tr1(who):who;
+    return lead+(g==="respected"?"आदरणीय ":"प्रिय ")+title+(end===","||/,$/.test(body)?",":"")}
   for(const [re,hi] of HI_OPEN){const m=body.match(re);if(m){const rest=body.slice(m[0].length);return lead+hi+(rest?await tr1(rest):"")}}
   return null;
 }
@@ -562,20 +567,50 @@ async function enPhrase(line,tr1){
 /* Hindi written in English letters ("mera naam Ramesh hai") is sent as Hindi. */
 const HINGLISH=/\b(hai|hain|hoon|hu|mera|meri|mere|aap|aapka|aapki|kya|nahi|nahin|kripya|mujhe|hum|humara|karna|karta|karti|raha|rahi|chahiye|ke liye|kal|aaj|bahut|dhanyavad|kyunki|lekin|aur|main)\b/gi;
 const isHinglish=t=>!/[^\x00-\x7F]/.test(t)&&(t.match(HINGLISH)||[]).length>=2;
+/* Hinglish ("mujhe chutti chahiye") is first written in Hindi script with Google's free input tool. */
+const TL=new Map();
+async function translitWord(w){
+  if(TL.has(w))return TL.get(w);
+  try{const r=await within(fetch("https://inputtools.google.com/request?itc=hi-t-i0-und&num=1&cp=0&cs=1&ie=utf-8&oe=utf-8&text="+encodeURIComponent(w)),6000);
+    const j=await r.json();const h=j?.[0]==="SUCCESS"?j[1]?.[0]?.[1]?.[0]:null;TL.set(w,h||null);return h||null}catch{return null}}
+async function translitHi(line){
+  const parts=line.split(/([A-Za-z]+)/);let any=false;
+  const outp=await Promise.all(parts.map(async x=>{if(!/^[A-Za-z]+$/.test(x))return x;const h=await translitWord(x.toLowerCase());if(h)any=true;return h||x}));
+  return any?outp.join(""):null}
+/* Keep placeholders like {NAME} or [Name] exactly as they are: translate the text around them only. */
+const TOKEN=/(\{[^{}\n]{1,30}\}|\[[^\[\]\n\s]{1,20}(?:\s[^\[\]\n\s]{1,20})?\])/;
+async function aroundTokens(line,fn){
+  if(!TOKEN.test(line))return fn(line);
+  const parts=line.split(TOKEN);const out=[];
+  for(const [i,x] of parts.entries()){
+    if(i%2===1||!/\p{L}/u.test(x)){out.push(x);continue}
+    const lead=x.match(/^\s*/)[0],trail=x.match(/\s*$/)[0];out.push(lead+(await fn(x.trim())).trim()+trail)}
+  return out.join("")}
+const words=x=>(x.trim().match(/\S+/g)||[]).length;
+function enPolish(t,srcLine){
+  if(!srcLine.includes("\n"))t=t.replace(/\s*\n\s*/g," ");
+  return t.replace(/(^|[.!?]\s+)([a-z])/g,(m,a,b)=>a+b.toUpperCase()).replace(/\bi\b(?=[\s'’,.!?]|$)/g,"I")}
 async function freeTranslate(items,signal){
   const t=LCODE[langSel.value]||"hi";const res=[];
   for(const item of items){
     let s=await detectLang(item);
-    if(s==="en"&&t!=="hi"&&isHinglish(item))s="hi";
-    if(s===t){res.push(item);continue}
+    const hinglish=s==="en"&&isHinglish(item);
+    if(hinglish)s="hi";
+    if(s===t&&!hinglish){res.push(item);continue}
     const lines=item.split("\n");const out=[];
     const useML=NATIVE&&MLKIT.has(s)&&MLKIT.has(t);const tr=useML?{translate:x=>mlTranslate(x,s,t)}:await chromeTranslator(s,t);
     const tr1=async line=>{let r=null;if(tr&&!(s==="hi"&&!/[ऀ-ॿ]/.test(line))){try{r=await within(tr.translate(line),useML?180000:15000)}catch{r=null}}
-      if(!r?.trim())r=await myMemory(line,s,t,signal);return r?.trim()?r:line};
-    for(const line of lines){if(!line.trim()){out.push(line);continue}
+      if(!r?.trim()){r=await myMemory(line,s,t,signal);
+        // The free online memory sometimes returns a whole different sentence for one or two words; don't use that.
+        if(r&&words(line)<=3&&words(r)>Math.max(4,words(line)*3))r=null}
+      return r?.trim()?r:line};
+    for(let line of lines){if(!line.trim()){out.push(line);continue}
       if(signal?.aborted)throw {code:"cancelled"};
-      let r=s==="en"&&t==="hi"?await hiPhrase(line,tr1):s==="hi"&&t==="en"?await enPhrase(line,tr1):null;if(r==null)r=await tr1(line);
-      out.push(t==="hi"?hiPolish(r):r);}
+      if(hinglish&&!/[ऀ-ॿ]/.test(line)){const h=await translitHi(line);if(h)line=h}
+      if(s===t){out.push(t==="hi"?hiPolish(line):line);continue}
+      let r=await aroundTokens(line,async seg=>(s==="en"&&t==="hi"?await hiPhrase(seg,tr1):s==="hi"&&t==="en"?await enPhrase(seg,tr1):null)??await tr1(seg));
+      if(t==="hi"&&/^\s*इसलिए,?\s/.test(r)&&!/^\s*(so|therefore|hence|thus)\b/i.test(line))r=r.replace(/^(\s*)इसलिए,?\s+/,"$1");
+      out.push(t==="hi"?hiPolish(r):t==="en"?enPolish(r,line):r);}
     res.push(out.join("\n"));
   }
   return res;
@@ -1812,19 +1847,20 @@ const loadScript=src=>new Promise((ok,bad)=>{if(document.querySelector(`script[s
   document.body.append(d);
   const f=n=>d.querySelector(`[name=${n}]`),err=d.querySelector(".err");
   b.onclick=()=>{err.textContent="";const t=out.value;
-    const found=["{NAME}","[Name]","{नाम}","[नाम]","{name}"].find(x=>t.includes(x));if(found)f("token").value=found;
+    const found=["{NAME}","[Name]","{नाम}","[नाम]"].find(x=>t.toLowerCase().includes(x.toLowerCase()));if(found)f("token").value=found;
     f("names").value=store.get("mergeNames","");d.showModal()};
   $("#mgClose").onclick=()=>d.close();
   d.querySelector("form").onsubmit=async e=>{e.preventDefault();err.textContent="";
     const tok=f("token").value.trim(),rows=f("names").value.split("\n").map(x=>x.trim()).filter(Boolean),t=out.value;
     if(!t.trim())return err.textContent="Write the letter first.";
     if(/(^|\n)…(\n|$)/.test(t))return err.textContent="Still translating. Wait a moment, then try again.";
-    if(!tok||!t.includes(tok))return err.textContent=`The letter on the right does not contain “${tok||"a placeholder"}”. Put it where the name should go.`;
+    const tokRe=tok?new RegExp(tok.replace(/[.*+?^${}()|[\]\\]/g,"\\$&"),"gi"):null;
+    if(!tok||t.search(tokRe)<0)return err.textContent=`The letter on the right does not contain “${tok||"a placeholder"}”. Put it where the name should go.`;
     if(!rows.length)return err.textContent="Add at least one name.";
     if(rows.length>300)return err.textContent="Please use 300 names or fewer at a time.";
     store.set("mergeNames",f("names").value);
     const go=$("#mgGo");go.disabled=true;go.textContent="Making "+rows.length+" letters…";
-    try{const letters=rows.map(r=>{const parts=r.split("|").map(x=>x.trim());let x=t.split(tok).join(parts[0]);parts.slice(1).forEach((v,i)=>{x=x.split("{"+(i+2)+"}").join(v)});return x});
+    try{const letters=rows.map(r=>{const parts=r.split("|").map(x=>x.trim());let x=t.replace(tokRe,()=>parts[0]);parts.slice(1).forEach((v,i)=>{x=x.split("{"+(i+2)+"}").join(v)});return x});
       const blob=await textToPdf(letters);await saveFile(fname(letterName()+" - "+rows.length+" people","pdf"),blob);d.close()}
     catch(e){console.error(e);err.textContent="Could not make the PDF. Try fewer names."}
     finally{go.disabled=false;go.textContent="Make PDF"}};
@@ -1929,6 +1965,6 @@ for(const [id,ev,k] of [["dlPdf","download","pdf"],["dlDocx","download","docx"],
   };
 })();
 </script>
-<script src="ui-hi.js?v=19"></script>
+<script src="ui-hi.js?v=20"></script>
 </body>
 </html>
