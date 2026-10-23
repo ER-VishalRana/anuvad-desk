@@ -210,6 +210,17 @@ body.locked #fbBtn{display:none}
 #shareDlg .row{display:flex;gap:8px;flex-wrap:wrap;justify-content:center}
 #findLetter{font:inherit;padding:7px 10px;border:1px solid var(--line);border-radius:10px;min-width:0;max-width:100%;width:12em;background:#fff;color:var(--ink)}
 @media (max-width:520px){#findLetter{flex:1 1 100%;width:auto}}
+#mergeDlg{border:1px solid var(--line);border-radius:18px;padding:0;width:min(480px,calc(100vw - 32px));color:var(--ink);background:#fff}
+#mergeDlg::backdrop{background:rgba(15,23,42,.35)}
+#mergeDlg .in{padding:22px 20px;display:grid;gap:10px}
+#mergeDlg h2{margin:0;font-family:var(--head,sans-serif);font-size:1.2rem}
+#mergeDlg p{margin:0;color:var(--muted);font-size:.9rem}
+#mergeDlg .tip{font-size:.82rem}
+#mergeDlg label{display:grid;gap:4px;font-size:.88rem;color:var(--muted)}
+#mergeDlg input,#mergeDlg textarea{font:inherit;padding:9px 11px;border:1px solid var(--line);border-radius:10px;color:var(--ink);background:#fff;width:100%;box-sizing:border-box}
+#mergeDlg .row{display:flex;gap:10px;justify-content:flex-end}
+#mergeDlg .err{color:var(--warn,#a4501b);font-size:.88rem;min-height:1.1em}
+#logoPrev{max-height:48px;max-width:120px;border:1px solid var(--line);border-radius:8px;background:#fff}
 </style>
 
 <script src="auth.js?v=17"></script>
@@ -220,6 +231,7 @@ body.locked #fbBtn{display:none}
     <div class="brand"><img src="logo.svg?v=17" width="38" height="38" alt=""><b>Varnum</b></div>
     <nav class="tabs" role="tablist">
       <button role="tab" id="tab-letter" aria-selected="true" data-view="letter">Letter</button>
+      <button role="tab" id="tab-word" aria-selected="false" data-view="word">Word</button>
       <button role="tab" id="tab-ppt" aria-selected="false" data-view="ppt">PowerPoint</button>
       <button role="tab" id="tab-pdf" aria-selected="false" data-view="pdf">PDF</button>
     </nav>
@@ -287,6 +299,10 @@ body.locked #fbBtn{display:none}
           <div class="sigrow"><button class="btn" id="sigBtn">Add signature</button><input type="file" id="sigFile" accept="image/*" hidden><img id="sigPrev" alt="Your signature" hidden><button class="btn" id="sigDel" hidden>Remove</button></div>
           <label class="chk" style="flex-direction:row"><input type="checkbox" id="lhOn"> Put letterhead on PDF</label>
           <label class="chk" style="flex-direction:row"><input type="checkbox" id="sigOn"> Put signature on PDF</label>
+          <label>Page design <select id="design"><option value="plain">Plain</option><option value="govt">Government office (double border)</option><option value="school">School / college (coloured header)</option><option value="office">Company / office (side bar)</option></select></label>
+          <span class="chk" style="color:var(--muted)">Logo (shown on the letterhead)</span>
+          <div class="sigrow"><button class="btn" id="logoBtn">Add logo</button><input type="file" id="logoFile" accept="image/*" hidden><img id="logoPrev" alt="Your logo" hidden><button class="btn" id="logoDel" hidden>Remove</button></div>
+          <label class="chk" style="flex-direction:row"><input type="checkbox" id="stampOn"> Leave a box for seal / stamp</label>
         </div>
       </div>
     </details>
@@ -313,6 +329,24 @@ body.locked #fbBtn{display:none}
   </section>
 
   <!-- PPT -->
+  <section id="view-word" hidden>
+    <label class="drop" id="wordDrop">
+      <strong>Open a Word file (.docx)</strong>
+      Tap to choose, or drop it here. Every paragraph shows up below, and you can translate them all at once.
+      <input type="file" id="wordFile" accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document">
+    </label>
+    <div id="wordWork" hidden>
+      <div class="toolbar">
+        <span id="wordName" class="grow"></span>
+        <button class="btn" id="wordTranslate">Translate whole file</button>
+        <button class="btn primary" id="wordSave">Download .docx</button>
+        <button class="btn" id="wordClose">Close file</button>
+      </div>
+      <p class="hint">Edit any paragraph. Changed paragraphs are outlined. Headings, tables, pictures and page layout stay as they were.</p>
+      <div class="slides" id="wordParas"></div>
+    </div>
+  </section>
+
   <section id="view-ppt" hidden>
     <label class="drop" id="pptDrop">
       <strong>Open a PowerPoint file (.pptx)</strong>
@@ -566,7 +600,7 @@ ${JSON.stringify(chunk)}`;
 }
 
 /* ---------- Tabs ---------- */
-const views=["letter","ppt","pdf"];
+const views=["letter","word","ppt","pdf"];
 function show(v){views.forEach(n=>{$("#view-"+n).hidden=n!==v;$("#tab-"+n).setAttribute("aria-selected",String(n===v))});store.set("view",v)}
 document.querySelectorAll("nav.tabs button").forEach(b=>b.onclick=()=>show(b.dataset.view));
 const hv=(location.hash||"").slice(1); show(views.includes(hv)?hv:store.get("view","letter"));
@@ -762,12 +796,18 @@ async function textToPdf(input){
   const W=1240,H=1754,M=150,B=110,FS=31,LH=FS*1.75; // A4 at 150 dpi, ~15pt type
   const font=`400 ${FS}px "Noto Serif Devanagari","Nirmala UI","Mangal",serif`;
   const pages=[]; let c,ctx,y;
-  const newPage=()=>{c=document.createElement("canvas");c.width=W;c.height=H;ctx=c.getContext("2d");ctx.fillStyle="#fff";ctx.fillRect(0,0,W,H);ctx.fillStyle="#111";ctx.font=font;ctx.textBaseline="top";y=M;pages.push(c)};
-  const lh=letterhead(), sig=lh.sigOn&&lh.sig?await loadImg(lh.sig):null;
+  const lh=letterhead(), sig=lh.sigOn&&lh.sig?await loadImg(lh.sig):null, logo=lh.on&&lh.logo?await loadImg(lh.logo):null;
+  const frame=()=>{ctx.save();
+    if(lh.design==="govt"){ctx.strokeStyle="#1f2937";ctx.lineWidth=5;ctx.strokeRect(40,40,W-80,H-80);ctx.lineWidth=1.5;ctx.strokeRect(54,54,W-108,H-108)}
+    else if(lh.design==="school"){ctx.fillStyle="#1e3a8a";ctx.fillRect(0,0,W,26);ctx.fillStyle="#f59e0b";ctx.fillRect(0,26,W,6);ctx.fillStyle="#1e3a8a";ctx.fillRect(0,H-18,W,18)}
+    else if(lh.design==="office"){const g=ctx.createLinearGradient(0,0,0,H);g.addColorStop(0,"#1e293b");g.addColorStop(1,"#64748b");ctx.fillStyle=g;ctx.fillRect(0,0,26,H);ctx.fillStyle="#cbd5e1";ctx.fillRect(M,H-80,W-2*M,2)}
+    ctx.restore()};
+  const newPage=()=>{c=document.createElement("canvas");c.width=W;c.height=H;ctx=c.getContext("2d");ctx.fillStyle="#fff";ctx.fillRect(0,0,W,H);frame();ctx.fillStyle="#111";ctx.font=font;ctx.textBaseline="top";y=M;pages.push(c)};
   for(const text of sections){
   newPage();
   if(lh.on&&(lh.name||lh.addr||lh.contact)){
     ctx.textAlign="center";const cx=W/2;y=90;
+    if(logo){const h=130,w=Math.min(220,logo.width*h/logo.height);ctx.drawImage(logo,lh.design==="school"||!lh.name?cx-w/2:M,y-10,w,h);if(lh.design==="school"||!lh.name)y+=h}
     if(lh.name){ctx.font=`600 46px "Noto Serif Devanagari","Nirmala UI",serif`;ctx.fillText(lh.name,cx,y);y+=66}
     ctx.font=`400 25px "Noto Serif Devanagari","Nirmala UI",serif`;ctx.fillStyle="#333";
     for(const l of [...lh.addr.split("\n"),lh.contact].filter(x=>x&&x.trim())){ctx.fillText(l.trim(),cx,y);y+=38}
@@ -788,6 +828,8 @@ async function textToPdf(input){
     for(const w of words){const t=line+w;if(ctx.measureText(t.trim()).width>W-2*M&&line.trim()){flush();line=w.trimStart()}else line=t}
     if(line.trim())flush();
   }
+  if(lh.stamp){const bw=300,bh=170;if(y+bh+40>H-B)newPage();y+=30;ctx.save();ctx.setLineDash([12,9]);ctx.strokeStyle="#94a3b8";ctx.lineWidth=2.5;
+    const bx=rtl?M:W-M-bw;ctx.beginPath();ctx.roundRect?ctx.roundRect(bx,y,bw,bh,16):ctx.rect(bx,y,bw,bh);ctx.stroke();ctx.setLineDash([]);ctx.fillStyle="#94a3b8";ctx.font=`400 24px "Noto Serif Devanagari",sans-serif`;ctx.textAlign="center";ctx.fillText("Seal / Stamp",bx+bw/2,y+bh/2-12);ctx.restore();ctx.font=font;y+=bh}
   }
   const {jsPDF}=window.jspdf; const doc=new jsPDF({unit:"pt",format:"a4"});
   pages.forEach((p,i)=>{if(i)doc.addPage("a4","p");doc.addImage(p.toDataURL("image/jpeg",0.92),"JPEG",0,0,595.28,841.89)});
@@ -795,7 +837,7 @@ async function textToPdf(input){
 }
 $("#dlPdf").onclick=async()=>{if(!out.value.trim())return toast("Nothing to save yet.");const b=await textToPdf($("#bi").checked&&src.value.trim()?[src.value,out.value]:out.value);saveFile(fname(letterName(),"pdf"),b)};
 
-function letterhead(){return{on:$("#lhOn").checked,sigOn:$("#sigOn").checked,name:$("#lhName").value.trim(),addr:$("#lhAddr").value,contact:$("#lhContact").value.trim(),sig:store.get("sig","")}}
+function letterhead(){return{design:$("#design").value,logo:store.get("logo",""),stamp:$("#stampOn").checked,on:$("#lhOn").checked,sigOn:$("#sigOn").checked,name:$("#lhName").value.trim(),addr:$("#lhAddr").value,contact:$("#lhContact").value.trim(),sig:store.get("sig","")}}
 function loadImg(url){return new Promise(r=>{const i=new Image();i.onload=()=>r(i);i.onerror=()=>r(null);i.src=url})}
 const esc=s=>s.replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
 async function textToDocx(text){
@@ -890,7 +932,15 @@ $("#photo").onchange=async()=>{
 
 /* ---------- Letterhead & signature (kept in this browser) ---------- */
 for(const id of ["lhName","lhAddr","lhContact"]){const el=$("#"+id);el.value=store.get(id,"");el.addEventListener("input",()=>store.set(id,el.value))}
-for(const id of ["lhOn","sigOn"]){const el=$("#"+id);el.checked=store.get(id,false);el.addEventListener("change",()=>store.set(id,el.checked))}
+for(const id of ["lhOn","sigOn","stampOn"]){const el=$("#"+id);el.checked=store.get(id,false);el.addEventListener("change",()=>store.set(id,el.checked))}
+$("#design").value=store.get("design","plain");$("#design").onchange=()=>store.set("design",$("#design").value);
+function paintLogo(){const d=store.get("logo","");$("#logoPrev").hidden=!d;$("#logoDel").hidden=!d;if(d)$("#logoPrev").src=d;$("#logoBtn").textContent=d?"Change logo":"Add logo"}
+paintLogo();$("#logoBtn").onclick=()=>$("#logoFile").click();
+$("#logoFile").onchange=async()=>{const f=$("#logoFile").files[0];$("#logoFile").value="";if(!f)return;
+  const img=await loadImg(URL.createObjectURL(f));if(!img)return toast("That image could not be opened.");
+  const sc=Math.min(1,300/img.width,300/img.height);const c=document.createElement("canvas");c.width=Math.round(img.width*sc);c.height=Math.round(img.height*sc);
+  c.getContext("2d").drawImage(img,0,0,c.width,c.height);store.set("logo",c.toDataURL("image/png"));$("#lhOn").checked=true;store.set("lhOn",true);paintLogo();toast("Logo added")};
+$("#logoDel").onclick=()=>{store.set("logo","");paintLogo();toast("Logo removed")};
 function paintSig(){const d=store.get("sig","");$("#sigPrev").hidden=!d;$("#sigDel").hidden=!d;if(d)$("#sigPrev").src=d;$("#sigBtn").textContent=d?"Change signature":"Add signature"}
 paintSig();
 $("#sigBtn").onclick=()=>$("#sigFile").click();
@@ -984,6 +1034,63 @@ function writePara(p,text){
   }
 }
 dropZone($("#pptDrop"),$("#pptFile"),openPpt);
+
+/* ---------- Word (.docx) ---------- */
+const WN="http://schemas.openxmlformats.org/wordprocessingml/2006/main";
+let word=null; // {zip,name,parts:[{path,doc,label,paras:[{el,orig,cur}]}]}
+const wText=p=>{let s="";for(const n of p.getElementsByTagNameNS(WN,"*")){if(n.localName==="t"&&n.parentNode.localName==="r")s+=n.textContent;else if(n.localName==="tab"&&n.parentNode.localName==="r")s+="\t";else if((n.localName==="br"||n.localName==="cr")&&n.parentNode.localName==="r")s+="\n"}return s};
+async function openWord(file){
+  if(!/\.docx$/i.test(file.name))return toast("Please choose a .docx file. Old .doc files must be saved as .docx first.");
+  setStatus("busy","Opening "+file.name+"…");
+  try{
+    const zip=await JSZip.loadAsync(file);const names=Object.keys(zip.files);
+    const paths=["word/document.xml",...names.filter(n=>/^word\/(header|footer)\d*\.xml$/.test(n)).sort(),...names.filter(n=>/^word\/(footnotes|endnotes)\.xml$/.test(n))].filter(n=>zip.file(n));
+    if(!paths.length)throw new Error("no document");const parts=[];
+    for(const path of paths){const doc=new DOMParser().parseFromString(await zip.file(path).async("string"),"application/xml");
+      // Only the innermost paragraphs (text boxes hold paragraphs inside paragraphs).
+      const paras=[...doc.getElementsByTagNameNS(WN,"p")].filter(el=>!el.getElementsByTagNameNS(WN,"p").length).map(el=>({el,orig:wText(el)})).filter(p=>p.orig.trim());
+      const label=path==="word/document.xml"?"Document":/header/.test(path)?"Page header":/footer/.test(path)?"Page footer":"Notes";
+      if(paras.length)parts.push({path,doc,label,paras})}
+    word={zip,name:file.name,parts};renderWord();setStatus("","Opened "+file.name);
+  }catch(e){setStatus("err","That file could not be read as a Word document.")}
+}
+function renderWord(){
+  $("#wordDrop").hidden=true;$("#wordWork").hidden=false;$("#wordName").textContent=word.name;
+  const box=$("#wordParas");box.replaceChildren();
+  word.parts.forEach((part,i)=>{const card=document.createElement("div");card.className="slide";
+    const h=document.createElement("h3");h.textContent=`${part.label} · ${part.paras.length} paragraph${part.paras.length===1?"":"s"}`;card.append(h);
+    part.paras.forEach((p,j)=>{const t=document.createElement("textarea");t.id=`word-${i}-${j}`;const v=p.cur??p.orig;t.rows=Math.min(8,Math.max(1,Math.ceil(v.length/80)+(v.match(/\n/g)||[]).length));t.value=v;
+      t.classList.toggle("changed",v!==p.orig);t.oninput=()=>{p.cur=t.value;t.classList.toggle("changed",t.value!==p.orig)};p.ta=t;card.append(t)});
+    box.append(card)});
+}
+function writeWordPara(p,text){
+  const doc=p.el.ownerDocument;const runs=[...p.el.getElementsByTagNameNS(WN,"r")].filter(r=>[...r.childNodes].some(n=>n.nodeType===1&&["t","tab","br","cr"].includes(n.localName)));
+  const first=runs[0];if(!first)return;
+  runs.slice(1).forEach(r=>{[...r.childNodes].forEach(n=>{if(n.nodeType===1&&["t","tab","br","cr"].includes(n.localName))n.remove()});if(![...r.childNodes].some(n=>n.nodeType===1&&n.localName!=="rPr"))r.remove()});
+  [...first.childNodes].forEach(n=>{if(n.nodeType===1&&["t","tab","br","cr"].includes(n.localName))n.remove()});
+  text.split("\n").forEach((line,i)=>{if(i){first.append(doc.createElementNS(WN,"w:br"))}
+    line.split("\t").forEach((seg,k)=>{if(k)first.append(doc.createElementNS(WN,"w:tab"));const t=doc.createElementNS(WN,"w:t");t.setAttribute("xml:space","preserve");t.textContent=seg;first.append(t)})});
+  // Hindi and other Indian scripts need a "complex script" font, or Word may show boxes.
+  if(/[\u0900-\u0DFF]/.test(text)){let rpr=[...first.childNodes].find(n=>n.localName==="rPr");if(!rpr){rpr=doc.createElementNS(WN,"w:rPr");first.prepend(rpr)}
+    let f=[...rpr.childNodes].find(n=>n.localName==="rFonts");if(!f){f=doc.createElementNS(WN,"w:rFonts");rpr.prepend(f)}
+    if(!f.getAttributeNS(WN,"cs"))f.setAttributeNS(WN,"w:cs","Nirmala UI")}
+}
+dropZone($("#wordDrop"),$("#wordFile"),openWord);
+$("#wordClose").onclick=()=>{word=null;$("#wordWork").hidden=true;$("#wordDrop").hidden=false;setStatus("","Ready")};
+$("#wordTranslate").onclick=async e=>{
+  const btn=e.currentTarget;const all=word.parts.flatMap(s=>s.paras);const items=all.map(p=>p.cur??p.orig);
+  btn.disabled=true;setStatus("busy",`Translating ${items.length} paragraphs…`);
+  try{const res=await translateList(items);all.forEach((p,i)=>{p.cur=res[i];p.ta.value=res[i];p.ta.classList.toggle("changed",res[i]!==p.orig)});setStatus("","Word file translated into "+langSel.value)}
+  catch(err){setStatus("err",errMsg(err))}
+  finally{btn.disabled=false}
+};
+$("#wordSave").onclick=async()=>{
+  const ser=new XMLSerializer();
+  for(const s of word.parts){let dirty=false;for(const p of s.paras){if(p.cur!=null&&p.cur!==p.orig){writeWordPara(p,p.cur);dirty=true}}
+    if(dirty){let xml=ser.serializeToString(s.doc);if(!xml.startsWith("<?xml"))xml='<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n'+xml;word.zip.file(s.path,xml);s.paras.forEach(p=>{if(p.cur!=null)p.orig=p.cur})}}
+  const blob=await word.zip.generateAsync({type:"blob",mimeType:"application/vnd.openxmlformats-officedocument.wordprocessingml.document"});
+  renderWord();saveFile(word.name.replace(/\.docx$/i,"")+" ("+langSel.value+").docx",blob);
+};
 $("#pptClose").onclick=()=>{ppt=null;$("#pptWork").hidden=true;$("#pptDrop").hidden=false;setStatus("","Ready")};
 $("#pptTranslate").onclick=async e=>{
   const btn=e.currentTarget;const all=ppt.slides.flatMap(s=>s.paras);const items=all.map(p=>p.cur??p.orig);
@@ -1676,6 +1783,39 @@ const loadScript=src=>new Promise((ok,bad)=>{if(document.querySelector(`script[s
   $("#shWa").onclick=()=>window.open("https://wa.me/?text="+encodeURIComponent(msg),"_blank","noopener");
   if(navigator.share){$("#shMore").hidden=false;$("#shMore").onclick=()=>navigator.share({title:"Varnum",text:msg,url:URL_}).catch(()=>{})}
   $("#shClose").onclick=()=>d.close();
+})();
+
+/* ---------- One letter, many people: one PDF with a copy for each name ---------- */
+(function mailMerge(){
+  const b=document.createElement("button");b.className="btn";b.type="button";b.id="mergeBtn";b.textContent="Many people…";b.title="Make a copy of this letter for each name in a list";
+  $("#dlDocx").after(b);
+  const d=document.createElement("dialog");d.id="mergeDlg";
+  d.innerHTML=`<form method="dialog" class="in"><h2>One letter for many people</h2>
+  <p>Write the letter once with a placeholder like <b>{NAME}</b> where the person's name goes. Then list the names here, one per line. You get one PDF with a letter for each.</p>
+  <label>Placeholder in the letter <input name="token" value="{NAME}" maxlength="40"></label>
+  <label>Names (one per line) <textarea name="names" rows="7" placeholder="Ramesh Kumar&#10;Sita Devi&#10;Mohan Lal"></textarea></label>
+  <p class="tip">Tip: to add more details, write them after the name with a “|”, for example <b>Ramesh Kumar | Class 10-A</b>, and put <b>{2}</b> in the letter where the second detail goes.</p>
+  <div class="err" role="alert"></div>
+  <div class="row"><button type="button" class="btn" id="mgClose">Close</button><button class="btn primary" id="mgGo">Make PDF</button></div></form>`;
+  document.body.append(d);
+  const f=n=>d.querySelector(`[name=${n}]`),err=d.querySelector(".err");
+  b.onclick=()=>{err.textContent="";const t=out.value;
+    const found=["{NAME}","[Name]","{नाम}","[नाम]","{name}"].find(x=>t.includes(x));if(found)f("token").value=found;
+    f("names").value=store.get("mergeNames","");d.showModal()};
+  $("#mgClose").onclick=()=>d.close();
+  d.querySelector("form").onsubmit=async e=>{e.preventDefault();err.textContent="";
+    const tok=f("token").value.trim(),rows=f("names").value.split("\n").map(x=>x.trim()).filter(Boolean),t=out.value;
+    if(!t.trim())return err.textContent="Write the letter first.";
+    if(/(^|\n)…(\n|$)/.test(t))return err.textContent="Still translating. Wait a moment, then try again.";
+    if(!tok||!t.includes(tok))return err.textContent=`The letter on the right does not contain “${tok||"a placeholder"}”. Put it where the name should go.`;
+    if(!rows.length)return err.textContent="Add at least one name.";
+    if(rows.length>300)return err.textContent="Please use 300 names or fewer at a time.";
+    store.set("mergeNames",f("names").value);
+    const go=$("#mgGo");go.disabled=true;go.textContent="Making "+rows.length+" letters…";
+    try{const letters=rows.map(r=>{const parts=r.split("|").map(x=>x.trim());let x=t.split(tok).join(parts[0]);parts.slice(1).forEach((v,i)=>{x=x.split("{"+(i+2)+"}").join(v)});return x});
+      const blob=await textToPdf(letters);await saveFile(fname(letterName()+" - "+rows.length+" people","pdf"),blob);d.close()}
+    catch(e){console.error(e);err.textContent="Could not make the PDF. Try fewer names."}
+    finally{go.disabled=false;go.textContent="Make PDF"}};
 })();
 })();
 </script>
