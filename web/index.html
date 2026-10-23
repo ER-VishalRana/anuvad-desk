@@ -6,9 +6,9 @@
 <meta name="description" content="Write or speak in English and get your letter in Hindi or 20+ languages as you type. 30 ready letters, photo to text, WhatsApp share, PowerPoint and PDF editing.">
 <meta name="theme-color" content="#f5f7ff">
 <link rel="manifest" href="manifest.webmanifest">
-<link rel="icon" type="image/svg+xml" href="logo.svg?v=16">
-<link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png?v=16">
-<link rel="apple-touch-icon" href="icon-192.png?v=16">
+<link rel="icon" type="image/svg+xml" href="logo.svg?v=17">
+<link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png?v=17">
+<link rel="apple-touch-icon" href="icon-192.png?v=17">
 <title>Varnum</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -184,7 +184,8 @@ footer{text-align:center}
 body.locked #fbBtn{display:none}
 #fbDlg{border:1px solid var(--line);border-radius:18px;padding:0;width:min(440px,calc(100vw - 32px));box-shadow:0 30px 60px -24px rgba(30,41,59,.45);color:var(--ink);background:#fff}
 #fbDlg::backdrop{background:rgba(15,23,42,.35)}
-#fbDlg form{padding:22px 20px;display:grid;gap:10px}
+#fbDlg form,#fbDlg .ok{padding:22px 20px;display:grid;gap:10px}
+#fbDlg [hidden]{display:none}
 #fbDlg h2{margin:0;font-family:var(--head,sans-serif);font-size:1.25rem}
 #fbDlg p{margin:0;color:var(--muted);font-size:.9rem}
 #fbDlg label{display:grid;gap:4px;font-size:.88rem;color:var(--muted)}
@@ -195,12 +196,12 @@ body.locked #fbBtn{display:none}
 #fbDlg .hp{position:absolute;left:-9999px;width:1px;height:1px;opacity:0}
 </style>
 
-<script src="auth.js?v=16"></script>
+<script src="auth.js?v=17"></script>
 </head>
 <body>
 <div class="wrap">
   <header class="bar">
-    <div class="brand"><img src="logo.svg?v=16" width="38" height="38" alt=""><b>Varnum</b></div>
+    <div class="brand"><img src="logo.svg?v=17" width="38" height="38" alt=""><b>Varnum</b></div>
     <nav class="tabs" role="tablist">
       <button role="tab" id="tab-letter" aria-selected="true" data-view="letter">Letter</button>
       <button role="tab" id="tab-ppt" aria-selected="false" data-view="ppt">PowerPoint</button>
@@ -1570,11 +1571,14 @@ $("#photo").onchange=async()=>{
     <div class="err" role="alert"></div>
     <div class="row"><button type="button" class="btn" value="cancel" id="fbClose">Close</button><button class="btn primary" id="fbSend">Send</button></div>
   </form>
+  <div class="ok" hidden><h2>Thank you!</h2><p>We got your message and will reply soon.</p><div class="row"><button type="button" class="btn primary" id="fbDone">OK</button></div></div>
 </dialog>
 <script>
 (function(){
   const btn=document.getElementById("fbBtn"),dlg=document.getElementById("fbDlg"),form=dlg.querySelector("form"),err=dlg.querySelector(".err"),send=document.getElementById("fbSend");
-  const f=n=>form.elements[n];
+  const f=n=>form.elements[n],ok=dlg.querySelector(".ok");
+  document.getElementById("fbDone").onclick=()=>dlg.close();
+  dlg.addEventListener("close",()=>{ok.hidden=true;form.hidden=false});
   btn.onclick=()=>{err.textContent="";if(!f("name").value){try{const s=JSON.parse(localStorage.getItem("anuvad-session")),u=JSON.parse(localStorage.getItem("anuvad-users"))[s.email];f("name").value=u.name;if(!f("email").value)f("email").value=u.email}catch{}}dlg.showModal();f(f("name").value?"message":"name").focus()};
   document.getElementById("fbClose").onclick=()=>dlg.close();
   form.onsubmit=async e=>{
@@ -1587,7 +1591,7 @@ $("#photo").onchange=async()=>{
     try{
       const r=await fetch("https://enquiries.alvvintechnology.com/api/enquiry",{method:"POST",headers:{"Content-Type":"application/json",Accept:"application/json"},body:JSON.stringify(d)});
       const j=await r.json().catch(()=>({}));
-      if(r.ok&&j.ok){form.reset();dlg.close();btn.textContent="Thank you!";setTimeout(()=>btn.textContent="Feedback",4000);return}
+      if(r.ok&&j.ok){form.reset();ok.hidden=false;form.hidden=true;return}
       err.textContent=j.errors?Object.values(j.errors).join(" "):(j.error||"Could not send just now. Please try again later.");
     }catch{err.textContent="Could not send. Check your internet connection and try again."}
     finally{send.disabled=false;send.textContent="Send"}
