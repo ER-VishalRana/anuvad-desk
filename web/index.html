@@ -624,6 +624,7 @@ $("#tpl").onchange=e=>{src.value=TPL[e.target.value];store.set("tpl",e.target.va
 langSel.onchange=()=>{store.set("lang",langSel.value);paintLabel();outEdited=false;$("#editedNote").hidden=true;renderOut();schedule()};
 styleSel.onchange=()=>{store.set("style",styleSel.value);paintLabel();outEdited=false;renderOut();schedule()};
 renderOut(); setStatus("", "Ready");
+if(assemble().some(p=>p==null))schedule();
 
 $("#copyOut").onclick=async()=>{try{await navigator.clipboard.writeText(out.value);toast("Copied")}catch{out.focus();out.select();toast("Text selected. Press Ctrl+C or long-press to copy.")}};
 
