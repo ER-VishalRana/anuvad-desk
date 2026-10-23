@@ -1,7 +1,7 @@
 <?xml version='1.0' encoding='utf-8'?>
 <resources>
-    <string name="app_name">Anuvad Desk</string>
-    <string name="title_activity_main">Anuvad Desk</string>
-    <string name="package_name">in.anuvaddesk.app</string>
-    <string name="custom_url_scheme">in.anuvaddesk.app</string>
+    <string name="app_name">Varnum</string>
+    <string name="title_activity_main">Varnum</string>
+    <string name="package_name">in.varnum.app</string>
+    <string name="custom_url_scheme">in.varnum.app</string>
 </resources>

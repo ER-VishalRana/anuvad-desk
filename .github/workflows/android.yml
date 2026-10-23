@@ -38,7 +38,7 @@ jobs:
 
       - uses: actions/upload-artifact@v4
         with:
-          name: anuvad-desk-apk
+          name: varnum-apk
           path: android/app/build/outputs/apk/debug/app-debug.apk
 
       # Play Store bundle: runs only after the signing secrets are added (see README).
@@ -57,5 +57,5 @@ jobs:
       - uses: actions/upload-artifact@v4
         if: ${{ hashFiles('android/app/build/outputs/bundle/release/*.aab') != '' }}
         with:
-          name: anuvad-desk-play-store-bundle
+          name: varnum-play-store-bundle
           path: android/app/build/outputs/bundle/release/app-release.aab

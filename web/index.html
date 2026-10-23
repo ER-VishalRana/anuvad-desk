@@ -6,10 +6,10 @@
 <meta name="description" content="Write or speak in English and get your letter in Hindi or 20+ languages as you type. 30 ready letters, photo to text, WhatsApp share, PowerPoint and PDF editing.">
 <meta name="theme-color" content="#f5f7ff">
 <link rel="manifest" href="manifest.webmanifest">
-<link rel="icon" type="image/svg+xml" href="logo.svg?v=15">
-<link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png?v=15">
-<link rel="apple-touch-icon" href="icon-192.png?v=15">
-<title>Anuvad</title>
+<link rel="icon" type="image/svg+xml" href="logo.svg?v=16">
+<link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png?v=16">
+<link rel="apple-touch-icon" href="icon-192.png?v=16">
+<title>Varnum</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Mukta:wght@400;500;700&family=Sora:wght@500;600;700&family=Noto+Serif+Devanagari:wght@400;600&display=swap">
@@ -195,12 +195,12 @@ body.locked #fbBtn{display:none}
 #fbDlg .hp{position:absolute;left:-9999px;width:1px;height:1px;opacity:0}
 </style>
 
-<script src="auth.js?v=15"></script>
+<script src="auth.js?v=16"></script>
 </head>
 <body>
 <div class="wrap">
   <header class="bar">
-    <div class="brand"><img src="logo.svg?v=15" width="38" height="38" alt=""><b>Anuvad</b></div>
+    <div class="brand"><img src="logo.svg?v=16" width="38" height="38" alt=""><b>Varnum</b></div>
     <nav class="tabs" role="tablist">
       <button role="tab" id="tab-letter" aria-selected="true" data-view="letter">Letter</button>
       <button role="tab" id="tab-ppt" aria-selected="false" data-view="ppt">PowerPoint</button>
@@ -1579,7 +1579,7 @@ $("#photo").onchange=async()=>{
   document.getElementById("fbClose").onclick=()=>dlg.close();
   form.onsubmit=async e=>{
     e.preventDefault();err.textContent="";
-    const d={name:f("name").value.trim(),phone:f("phone").value.trim(),email:f("email").value.trim(),message:f("message").value.trim(),website:f("website").value,subject:"Anuvad feedback",page:location.href};
+    const d={name:f("name").value.trim(),phone:f("phone").value.trim(),email:f("email").value.trim(),message:f("message").value.trim(),website:f("website").value,subject:"Varnum feedback",page:location.href};
     if(d.name.length<2)return err.textContent="Please enter your name.";
     if(!d.phone&&!d.email)return err.textContent="Please give a phone number or an email address.";
     if(!d.message)return err.textContent="Please write your message.";

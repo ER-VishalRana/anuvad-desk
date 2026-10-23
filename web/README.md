@@ -1,4 +1,4 @@
-# Anuvad Desk (web app)
+# Varnum (web app)
 
 Write in English and get the letter in Hindi or 20+ other languages as you type. It also edits PowerPoint (.pptx) and PDF files. Everything runs in the browser, and there is no server to pay for.
 
@@ -13,10 +13,10 @@ Double-click `index.html`. It opens in Chrome and works. The internet is needed 
 ## Put it online for free
 
 ### Option A: GitHub Pages (recommended)
-1. On github.com, create a new **public** repository, for example `anuvad-desk`.
+1. On github.com, create a new **public** repository, for example `varnum`.
 2. Click **Add file → Upload files**, drag in all the files from this folder, then click **Commit changes**.
 3. Open **Settings → Pages**. Under "Branch" choose `main` and `/ (root)`, then **Save**.
-4. After about a minute your app is live at `https://<your-username>.github.io/anuvad-desk/`.
+4. After about a minute your app is live at `https://<your-username>.github.io/varnum/`.
 
 ### Option B: Netlify (drag and drop)
 1. Sign up free at netlify.com.

@@ -1,4 +1,4 @@
-// Sign up / sign in screen for the web version of Anuvad Desk.
+// Sign up / sign in screen for the web version of Varnum.
 // Accounts are kept in this browser only (localStorage); passwords are stored as a salted PBKDF2 hash.
 // There is no server yet, so an account made in one browser is not known in another.
 (function () {
@@ -83,7 +83,7 @@ body.locked .wrap{visibility:hidden}`;
     gate.id = "authGate";
     gate.innerHTML = `
 <form class="card" novalidate>
-  <h1><img src="logo.svg?v=15" width="44" height="44" alt=""><b>Anuvad</b></h1>
+  <h1><img src="logo.svg?v=16" width="44" height="44" alt=""><b>Varnum</b></h1>
   <p class="sub">Write in English, get it in Hindi or any language.</p>
   <div class="switch" role="group" aria-label="Account">
     <button type="button" data-m="signin">Sign in</button>

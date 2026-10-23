@@ -1,6 +1,6 @@
 {
-  "appId": "in.anuvaddesk.app",
-  "appName": "Anuvad Desk",
+  "appId": "in.varnum.app",
+  "appName": "Varnum",
   "webDir": "www",
   "android": { "allowMixedContent": false }
 }

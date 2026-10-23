@@ -1,10 +1,10 @@
 apply plugin: 'com.android.application'
 
 android {
-    namespace "in.anuvaddesk.app"
+    namespace "in.varnum.app"
     compileSdk rootProject.ext.compileSdkVersion
     defaultConfig {
-        applicationId "in.anuvaddesk.app"
+        applicationId "in.varnum.app"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1

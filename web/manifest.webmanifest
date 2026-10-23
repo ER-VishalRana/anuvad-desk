@@ -1,6 +1,6 @@
 {
-  "name": "Anuvad",
-  "short_name": "Anuvad",
+  "name": "Varnum",
+  "short_name": "Varnum",
   "description": "Write in English and get your letter in Hindi or 20+ languages as you type. Edit PowerPoint and PDF files.",
   "start_url": "./",
   "scope": "./",
@@ -8,8 +8,8 @@
   "background_color": "#f6f7f9",
   "theme_color": "#f6f7f9",
   "icons": [
-    {"src": "icon-192.png?v=15", "sizes": "192x192", "type": "image/png"},
-    {"src": "icon-512.png?v=15", "sizes": "512x512", "type": "image/png"},
-    {"src": "icon-maskable-512.png?v=15", "sizes": "512x512", "type": "image/png", "purpose": "maskable"}
+    {"src": "icon-192.png?v=16", "sizes": "192x192", "type": "image/png"},
+    {"src": "icon-512.png?v=16", "sizes": "512x512", "type": "image/png"},
+    {"src": "icon-maskable-512.png?v=16", "sizes": "512x512", "type": "image/png", "purpose": "maskable"}
   ]
 }

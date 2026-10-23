@@ -1,4 +1,4 @@
-package in.anuvaddesk.app;
+package in.varnum.app;
 
 import com.getcapacitor.BridgeActivity;
 
