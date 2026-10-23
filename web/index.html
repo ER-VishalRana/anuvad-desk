@@ -890,16 +890,38 @@ $("#pdfSave").onclick=async e=>{
   }catch(err){console.error(err);setStatus("err","Could not make the PDF.")}
   finally{btn.disabled=false}
 };
+let tessLoad=null;
+function loadTesseract(){
+  if(window.Tesseract)return Promise.resolve();
+  return tessLoad||(tessLoad=new Promise((ok,bad)=>{const sc=document.createElement("script");
+    sc.src="https://cdn.jsdelivr.net/npm/tesseract.js@5.1.1/dist/tesseract.min.js";sc.onload=ok;sc.onerror=()=>{tessLoad=null;bad(new Error("ocr_load"))};document.head.appendChild(sc)}));
+}
+async function ocrPages(pages){
+  setStatus("busy","This PDF is a scan. Getting the page reader ready (first time can take a minute)…");
+  await loadTesseract();
+  const worker=await Tesseract.createWorker(["eng","hin"],1,{logger:m=>{}});
+  try{
+    let out="";
+    for(let i=0;i<pages.length;i++){
+      setStatus("busy",`Reading scanned page ${i+1} of ${pages.length}…`);
+      const {data}=await worker.recognize(await pageImage(pages[i]));
+      out+=data.text.trim()+"\n\n";
+    }
+    return out.replace(/[ \t]+\n/g,"\n").replace(/\n{3,}/g,"\n\n").trim();
+  }finally{worker.terminate()}
+}
+// Render the page at about 2x for better recognition than the on-screen canvas.
+async function pageImage(p){
+  const vp=p.pg.getViewport({scale:2});const c=document.createElement("canvas");c.width=vp.width;c.height=vp.height;
+  await p.pg.render({canvasContext:c.getContext("2d"),viewport:vp}).promise;return c;
+}
 $("#pdfToLetter").onclick=async()=>{
   setStatus("busy","Reading the PDF text…");let text="";
   for(const p of pdf.pages){const tc=await p.pg.getTextContent();for(const it of tc.items){text+=it.str+(it.hasEOL?"\n":"")}text+="\n\n"}
   text=text.replace(/\n{3,}/g,"\n\n").trim();
   if(!text){
-    const sample=await getSample();const lim=sample?await sample.limits().catch(()=>null):null;
-    if(!lim?.images){setStatus("err","This PDF is a scanned image. Scanned PDFs cannot be translated here; use a PDF that has real text.");return}
-    setStatus("busy","This PDF is a scan. Reading the pages…");
-    try{const imgs=await Promise.all(pdf.pages.slice(0,lim.images.maxCount).map(p=>new Promise(r=>p.canvas.toBlob(r,"image/jpeg",0.9))));
-      text=await readImages(imgs);}catch(e){setStatus("err",errMsg(e));return}
+    // Scanned PDF: read the page images with free on-device OCR (Tesseract.js, English + Hindi).
+    try{text=await ocrPages(pdf.pages)}catch(e){console.error(e);setStatus("err","Could not read the scanned pages. Check your internet connection (the first scan downloads the reader), then try again.");return}
     if(!text){setStatus("err","No readable text was found in this PDF.");return}
   }
   src.value=text;store.set("draft",text);outEdited=false;$("#editedNote").hidden=true;show("letter");renderOut();runTranslate(true);
