@@ -1,6 +1,7 @@
 // Sign up / sign in screen for the web version of Varnum.
-// Accounts are kept in this browser only (localStorage); passwords are stored as a salted PBKDF2 hash.
-// There is no server yet, so an account made in one browser is not known in another.
+// Accounts live on the Varnum server (Jarvis), so they work on every device and saved letters sync.
+// A copy (salted PBKDF2 hash) is kept in this browser, so signing in still works without internet.
+// Accounts made before the server existed are moved to it the first time their owner signs in.
 (function () {
   if (window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform()) return;
 
@@ -9,6 +10,23 @@
   const write = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); return true; } catch { return false; } };
   const hex = b => [...new Uint8Array(b)].map(x => x.toString(16).padStart(2, "0")).join("");
   const normEmail = e => e.trim().toLowerCase();
+
+  const API = (document.querySelector('meta[name="varnum-api"]') || {}).content || "https://varnum-api.alvvintechnology.com";
+  // Calls the Varnum server. Returns the JSON reply, or null when the server can't be reached.
+  async function api(path, { method = "GET", body, token } = {}) {
+    try {
+      const r = await fetch(API + path, { method, headers: { "Content-Type": "application/json", ...(token ? { Authorization: "Bearer " + token } : {}) }, body: body ? JSON.stringify(body) : undefined, keepalive: method !== "GET" && JSON.stringify(body || {}).length < 60000 });
+      if (r.status >= 500) return null; // server down: treat like no internet
+      const j = await r.json().catch(() => ({}));
+      return { status: r.status, ...j };
+    } catch { return null; }
+  }
+  const session = () => read(SESSION, null);
+  window.varnumAuth = {
+    token: () => (session() || {}).token || null,
+    api: (path, opts = {}) => api(path, { ...opts, token: (session() || {}).token }),
+    dropToken: () => { const s = session(); if (s) { delete s.token; write(SESSION, s); } },
+  };
 
   async function hash(password, saltHex) {
     const salt = new Uint8Array(saltHex.match(/../g).map(h => parseInt(h, 16)));
@@ -71,7 +89,7 @@ body.locked .wrap{visibility:hidden}`;
     const out = document.createElement("button");
     out.type = "button";
     out.textContent = "Sign out";
-    out.onclick = () => { localStorage.removeItem(SESSION); chip.remove(); showGate("signin"); };
+    out.onclick = () => { const t = window.varnumAuth.token(); if (t) api("/api/logout", { method: "POST", token: t }); localStorage.removeItem(SESSION); chip.remove(); showGate("signin"); };
     chip.append(who, out);
   }
 
@@ -83,7 +101,7 @@ body.locked .wrap{visibility:hidden}`;
     gate.id = "authGate";
     gate.innerHTML = `
 <form class="card" novalidate>
-  <h1><img src="logo.svg?v=18" width="44" height="44" alt=""><b>Varnum</b></h1>
+  <h1><img src="logo.svg?v=19" width="44" height="44" alt=""><b>Varnum</b></h1>
   <p class="sub">Write in English, get it in Hindi or any language.</p>
   <div class="switch" role="group" aria-label="Account">
     <button type="button" data-m="signin">Sign in</button>
@@ -123,24 +141,33 @@ body.locked .wrap{visibility:hidden}`;
       const users = read(USERS, {});
       go.disabled = true;
       try {
+        const keepLocal = async (name) => { const salt = hex(crypto.getRandomValues(new Uint8Array(16))); users[email] = { ...(users[email] || {}), name, email, salt, hash: await hash(password, salt), created: (users[email] || {}).created || new Date().toISOString() }; write(USERS, users); };
+        let token = null, name = null;
         if (mode === "signup") {
-          const name = f("name").value.trim().replace(/\s+/g, " ");
+          name = f("name").value.trim().replace(/\s+/g, " ");
           if (name.length < 2) return err.textContent = "Enter your name.";
           if (password.length < 6) return err.textContent = "Password must be at least 6 characters.";
           if (password !== f("confirm").value) return err.textContent = "The two passwords do not match.";
-          if (users[email]) return err.textContent = "An account with this email already exists. Sign in instead.";
-          const salt = hex(crypto.getRandomValues(new Uint8Array(16)));
-          users[email] = { name, email, salt, hash: await hash(password, salt), created: new Date().toISOString() };
-          if (!write(USERS, users)) return err.textContent = "This browser is blocking storage, so the account could not be saved.";
+          const r = await api("/api/signup", { method: "POST", body: { name, email, password } });
+          if (r && !r.ok) return err.textContent = r.error || "Could not create the account.";
+          if (!r && users[email]) return err.textContent = "An account with this email already exists. Sign in instead.";
+          if (r) token = r.token;
+          await keepLocal(name);
         } else {
           const u = users[email];
-          if (!u) return err.textContent = "No account with this email. Create one first.";
-          if (await hash(password, u.salt) !== u.hash) return err.textContent = "Wrong password.";
+          const localOk = !!u && await hash(password, u.salt) === u.hash;
+          let r = await api("/api/login", { method: "POST", body: { email, password } });
+          if (r && r.code === "no_account" && localOk) r = await api("/api/signup", { method: "POST", body: { name: u.name, email, password } }); // move an older browser-only account to the server
+          if (r && !r.ok) return err.textContent = r.error || "Could not sign in.";
+          if (!r && !u) return err.textContent = "No internet, and this account is not on this device yet. Connect to the internet and try again.";
+          if (!r && !localOk) return err.textContent = "Wrong password.";
+          if (r) { token = r.token; name = r.user.name; await keepLocal(name); } else name = u.name;
         }
-        write(SESSION, { email, at: new Date().toISOString() });
+        write(SESSION, { email, at: new Date().toISOString(), ...(token ? { token } : {}) });
         gate.remove();
         document.body.classList.remove("locked");
-        showChip(users[email]);
+        showChip(read(USERS, {})[email]);
+        window.dispatchEvent(new Event("varnum-signed-in"));
       } finally { go.disabled = false; }
     };
   }

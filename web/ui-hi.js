@@ -98,7 +98,10 @@
     "Too many requests just now. Wait a minute, then press Translate now.": "अभी बहुत अनुरोध हो गए। एक मिनट रुककर “अभी अनुवाद करें” दबाएँ।",
     "No translator is available right now. Check your internet connection, then press Translate now.": "अभी अनुवाद उपलब्ध नहीं है। इंटरनेट जाँचकर “अभी अनुवाद करें” दबाएँ।",
     "Translation failed. Check your internet and press Translate now.": "अनुवाद नहीं हुआ। इंटरनेट जाँचकर “अभी अनुवाद करें” दबाएँ।",
-    "More formal: ": "ज़्यादा औपचारिक: ", "Hindi": "हिंदी", "English": "अंग्रेज़ी", "Hindi script": "हिंदी लिपि", "English: ": "अंग्रेज़ी: ", "Hindi: ": "हिंदी: "
+    "More formal: ": "ज़्यादा औपचारिक: ", "No internet, and this account is not on this device yet. Connect to the internet and try again.": "इंटरनेट नहीं है, और यह खाता इस डिवाइस पर अभी नहीं है। इंटरनेट से जुड़कर फिर कोशिश करें।",
+    "Could not sign in.": "साइन इन नहीं हो सका।", "Could not create the account.": "खाता नहीं बन सका।", "Too many tries. Please wait 15 minutes.": "बहुत बार कोशिश हुई। 15 मिनट रुकें।",
+    "Too many tries. Please wait a while.": "बहुत बार कोशिश हुई। थोड़ी देर रुकें।", "Sign in once more to keep your letters on all your devices.": "अपने पत्र सभी डिवाइस पर रखने के लिए एक बार फिर साइन इन करें।",
+    "Sign in again": "फिर से साइन इन करें", "Hindi": "हिंदी", "English": "अंग्रेज़ी", "Hindi script": "हिंदी लिपि", "English: ": "अंग्रेज़ी: ", "Hindi: ": "हिंदी: "
   };
   const RULES = [
     [/^(\d+) words · (\d+) characters$/, (m) => `${m[1]} शब्द · ${m[2]} अक्षर`],

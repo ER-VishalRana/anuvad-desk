@@ -4,11 +4,12 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <meta name="description" content="Write or speak in English and get your letter in Hindi or 20+ languages as you type. 30 ready letters, photo to text, WhatsApp share, PowerPoint and PDF editing.">
+<meta name="varnum-api" content="https://varnum-api.alvvintechnology.com">
 <meta name="theme-color" content="#f5f7ff">
 <link rel="manifest" href="manifest.webmanifest">
-<link rel="icon" type="image/svg+xml" href="logo.svg?v=18">
-<link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png?v=18">
-<link rel="apple-touch-icon" href="icon-192.png?v=18">
+<link rel="icon" type="image/svg+xml" href="logo.svg?v=19">
+<link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png?v=19">
+<link rel="apple-touch-icon" href="icon-192.png?v=19">
 <title>Varnum · Write letters in Hindi, free</title>
 <link rel="canonical" href="https://varnum.alvvintechnology.com/">
 <meta property="og:title" content="Varnum · Write letters in Hindi, free">
@@ -228,14 +229,15 @@ body.locked #fbBtn{display:none}
 #logoPrev{max-height:48px;max-width:120px;border:1px solid var(--line);border-radius:8px;background:#fff}
 #uiLangBtn{font-weight:600}
 .uiLangGate{position:absolute;top:14px;right:14px;padding:4px 12px;font-size:.88rem;z-index:1}
+#syncNote{margin:0 0 12px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 </style>
 
-<script src="auth.js?v=18"></script>
+<script src="auth.js?v=19"></script>
 </head>
 <body>
 <div class="wrap">
   <header class="bar">
-    <div class="brand"><img src="logo.svg?v=18" width="38" height="38" alt=""><b>Varnum</b></div>
+    <div class="brand"><img src="logo.svg?v=19" width="38" height="38" alt=""><b>Varnum</b></div>
     <nav class="tabs" role="tablist">
       <button role="tab" id="tab-letter" aria-selected="true" data-view="letter">Letter</button>
       <button role="tab" id="tab-word" aria-selected="false" data-view="word">Word</button>
@@ -1827,6 +1829,60 @@ const loadScript=src=>new Promise((ok,bad)=>{if(document.querySelector(`script[s
     catch(e){console.error(e);err.textContent="Could not make the PDF. Try fewer names."}
     finally{go.disabled=false;go.textContent="Make PDF"}};
 })();
+
+/* ---------- Sync with the Varnum server: saved letters and my details follow the account ---------- */
+const VA=window.varnumAuth||null;
+async function syncLetters(){
+  if(!VA?.token())return;
+  const r=await VA.api("/api/letters");if(!r)return;
+  if(r.status===401){VA.dropToken();paintSyncNote();return}
+  if(!r.ok)return;
+  const local=new Map(letters().map(l=>[l.id,l])),tomb=store.get("letterDeletes",[]);
+  for(const d of r.deleted||[]){const l=local.get(d.id);if(l&&(l.ts||0)<=d.ts)local.delete(d.id)}
+  const push=[];const seen=new Set();
+  for(const sl of r.letters||[]){seen.add(sl.id);const l=local.get(sl.id);if(!l||(sl.ts||0)>(l.ts||0))local.set(sl.id,sl);else if((l.ts||0)>(sl.ts||0))push.push(l)}
+  for(const l of local.values())if(!seen.has(l.id)&&!(r.deleted||[]).some(d=>d.id===l.id&&d.ts>=(l.ts||0)))push.push(l);
+  for(const t of tomb){local.delete(t.id);await VA.api("/api/letters/"+encodeURIComponent(t.id),{method:"DELETE"})}
+  if(tomb.length)store.set("letterDeletes",[]);
+  for(const l of push)await VA.api("/api/letters/"+encodeURIComponent(l.id),{method:"PUT",body:{letter:l}});
+  const merged=[...local.values()].sort((a,b)=>(b.ts||0)-(a.ts||0));
+  store.set("letters",merged);paintSaved(savedSel.value&&local.has(savedSel.value)?savedSel.value:"");
+}
+async function syncDetails(){
+  if(!VA?.token())return;
+  const r=await VA.api("/api/me");if(!r?.ok)return;
+  const d=r.user.details||{},mine=store.get("detailsTs",0);
+  if((d.ts||0)>mine){for(const id of ["lhName","lhAddr","lhContact"]){$("#"+id).value=d[id]||"";store.set(id,d[id]||"");$("#"+id).dispatchEvent(new Event("input"))}store.set("detailsTs",d.ts)}
+  else if(mine>(d.ts||0))pushDetails();
+}
+let detT;function pushDetails(){clearTimeout(detT);detT=setTimeout(()=>{if(!VA?.token())return;
+  VA.api("/api/me/details",{method:"PUT",body:{details:{lhName:$("#lhName").value,lhAddr:$("#lhAddr").value,lhContact:$("#lhContact").value,ts:store.get("detailsTs",Date.now())}}})},1500)}
+for(const id of ["lhName","lhAddr","lhContact"])$("#"+id).addEventListener("input",e=>{if(!e.isTrusted)return;store.set("detailsTs",Date.now());pushDetails()});
+// Save and delete go to the server too (and are retried on the next sync if offline).
+$("#saveLetter").addEventListener("click",()=>setTimeout(()=>{const l=letters().find(x=>x.id===savedSel.value);if(l&&VA?.token())VA.api("/api/letters/"+encodeURIComponent(l.id),{method:"PUT",body:{letter:l}})}));
+$("#delLetter").addEventListener("click",()=>setTimeout(()=>{const all=new Set(letters().map(l=>l.id)),known=store.get("knownIds",[]);
+  const gone=known.filter(id=>!all.has(id));if(gone.length)store.set("letterDeletes",[...store.get("letterDeletes",[]),...gone.map(id=>({id,ts:Date.now()}))]);store.set("knownIds",[...all]);syncLetters()}));
+setInterval(()=>store.set("knownIds",letters().map(l=>l.id)),3000);store.set("knownIds",letters().map(l=>l.id));
+// An account from before the server existed: ask to sign in once more so letters can sync.
+function paintSyncNote(){let n=$("#syncNote");const need=!!window.varnumAuth&&!VA.token()&&!NATIVE;
+  if(!need){n?.remove();return}
+  if(n)return;n=document.createElement("div");n.id="syncNote";n.className="notice";
+  n.append("Sign in once more to keep your letters on all your devices. ");const b=document.createElement("button");b.className="btn";b.type="button";b.textContent="Sign in again";
+  b.onclick=()=>$("#userChip button")?.click();n.append(b);$("#lhBox").before(n)}
+async function syncAll(){paintSyncNote();await syncLetters().catch(()=>{});await syncDetails().catch(()=>{})}
+window.addEventListener("varnum-signed-in",syncAll);
+window.addEventListener("online",syncAll);
+syncAll();
+
+/* ---------- Private usage counts (no letter text, only what feature was used) ---------- */
+const track=(()=>{const API=(document.querySelector('meta[name="varnum-api"]')||{}).content||"https://varnum-api.alvvintechnology.com";const last={};
+  return (event,key="")=>{const k=event+"|"+key,now=Date.now();if(last[k]&&now-last[k]<60000)return;last[k]=now;
+    try{fetch(API+"/api/usage",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({event,key:String(key).slice(0,40)}),keepalive:true}).catch(()=>{})}catch{}}})();
+{const today=new Date().toISOString().slice(0,10);if(store.get("lastVisit","")!==today){store.set("lastVisit",today);track("visit",NATIVE?"android":"web")}}
+new MutationObserver(()=>{if(/Up to date|अनुवाद पूरा/.test($("#status").textContent)&&out.value.trim())track("translate",langSel.value)}).observe($("#status"),{childList:true,subtree:true,characterData:true});
+$("#tpl").addEventListener("change",e=>track("template",e.target.value));
+for(const [id,ev,k] of [["dlPdf","download","pdf"],["dlDocx","download","docx"],["printBtn","download","print"],["wordSave","word","save"],["pptSave","ppt","save"],["pdfSave","pdf","save"],["mgGo","merge",""],["shareApp","share","app"],["waShare","share","whatsapp"]])
+  document.getElementById(id)?.addEventListener("click",()=>track(ev,k));
 })();
 </script>
 
@@ -1861,8 +1917,11 @@ const loadScript=src=>new Promise((ok,bad)=>{if(document.querySelector(`script[s
     if(!d.message)return err.textContent="Please write your message.";
     send.disabled=true;send.textContent="Sending…";
     try{
-      const r=await fetch("https://enquiries.alvvintechnology.com/api/enquiry",{method:"POST",headers:{"Content-Type":"application/json",Accept:"application/json"},body:JSON.stringify(d)});
-      const j=await r.json().catch(()=>({}));
+      const URL_="https://enquiries.alvvintechnology.com/api/enquiry",H={"Content-Type":"application/json",Accept:"application/json"};
+      const http=window.Capacitor?.isNativePlatform?.()&&window.Capacitor.Plugins?.CapacitorHttp;
+      // The Android app has no website origin, so it posts through the native HTTP client (no CORS).
+      let r,j;if(http){d.app="android";d.site="varnum.alvvintechnology.com";const x=await http.post({url:URL_,headers:H,data:d});r={ok:x.status>=200&&x.status<300};j=typeof x.data==="string"?JSON.parse(x.data||"{}"):x.data||{}}
+      else{r=await fetch(URL_,{method:"POST",headers:H,body:JSON.stringify(d)});j=await r.json().catch(()=>({}))}
       if(r.ok&&j.ok){form.reset();ok.hidden=false;form.hidden=true;return}
       err.textContent=j.errors?Object.values(j.errors).join(" "):(j.error||"Could not send just now. Please try again later.");
     }catch{err.textContent="Could not send. Check your internet connection and try again."}
@@ -1870,6 +1929,6 @@ const loadScript=src=>new Promise((ok,bad)=>{if(document.querySelector(`script[s
   };
 })();
 </script>
-<script src="ui-hi.js?v=18"></script>
+<script src="ui-hi.js?v=19"></script>
 </body>
 </html>
