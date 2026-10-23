@@ -1,0 +1,6 @@
+{
+  "appId": "in.anuvaddesk.app",
+  "appName": "Anuvad Desk",
+  "webDir": "www",
+  "android": { "allowMixedContent": false }
+}

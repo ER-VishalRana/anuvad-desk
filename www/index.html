@@ -1,0 +1,916 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="description" content="Write in English and get your letter in Hindi or 20+ languages as you type. Edit PowerPoint and PDF files.">
+<meta name="theme-color" content="#2f43a6">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<title>Anuvad Desk</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Mukta:wght@400;500;700&family=Noto+Serif+Devanagari:wght@400;600&display=swap">
+<script src="lib/jszip.min.js"></script>
+<script src="lib/jspdf.umd.min.js"></script>
+<script src="lib/pdf.min.js"></script>
+<script src="lib/pdf.worker.min.js"></script>
+<style>
+/* Layout: a writing desk. One app bar with three tools; each tool is a pair of "sheets" (source + result) or a file workspace. */
+:root{
+  --bg:#eef0f4; --surface:#ffffff; --sheet:#fffdfa; --ink:#1a2130; --muted:#5d6778; --line:#d5d9e2;
+  --accent:#2f43a6; --accent-ink:#ffffff; --accent-soft:#e3e7f8; --mark:#c98a12; --ok:#1f7a4d; --warn:#a4501b;
+  --ui:"Mukta",system-ui,-apple-system,"Segoe UI",sans-serif;
+  --letter:"Noto Serif Devanagari","Nirmala UI","Mangal",Georgia,serif;
+  --r:10px;
+}
+@media (prefers-color-scheme: dark){:root:not([data-theme="light"]){
+  --bg:#141821; --surface:#1c212d; --sheet:#20263a; --ink:#e6e9f0; --muted:#9aa3b5; --line:#323a4d;
+  --accent:#8c9cf0; --accent-ink:#10142a; --accent-soft:#283158; --mark:#e3b04a; --ok:#5cc391; --warn:#f0a070; color-scheme:dark}}
+:root[data-theme="dark"]{
+  --bg:#141821; --surface:#1c212d; --sheet:#20263a; --ink:#e6e9f0; --muted:#9aa3b5; --line:#323a4d;
+  --accent:#8c9cf0; --accent-ink:#10142a; --accent-soft:#283158; --mark:#e3b04a; --ok:#5cc391; --warn:#f0a070; color-scheme:dark}
+*{box-sizing:border-box}
+html{color-scheme:light}
+body{margin:0}
+img{max-width:100%}
+[hidden]{display:none!important}
+body{background:var(--bg);color:var(--ink);font-family:var(--ui);font-size:16px;line-height:1.5;
+  padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));padding-block:0 32px}
+.wrap{max-width:1180px;margin:0 auto}
+header.bar{display:flex;flex-wrap:wrap;align-items:center;gap:12px 20px;padding-block:16px 12px}
+.brand{display:flex;align-items:baseline;gap:10px}
+.brand b{font-size:1.45rem;letter-spacing:.01em}
+.brand span{font-family:var(--letter);color:var(--accent);font-size:1.2rem}
+nav.tabs{display:flex;gap:4px;background:var(--surface);border:1px solid var(--line);border-radius:999px;padding:4px;margin-left:auto;flex-wrap:wrap}
+nav.tabs button{border:0;background:transparent;color:var(--muted);font:inherit;font-weight:500;padding:6px 16px;border-radius:999px;cursor:pointer}
+nav.tabs button[aria-selected="true"]{background:var(--accent);color:var(--accent-ink)}
+button,select,input{font:inherit;color:inherit}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.toolbar{display:flex;flex-wrap:wrap;gap:10px 14px;align-items:center;background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:10px 14px;margin-bottom:14px}
+.toolbar label{display:flex;align-items:center;gap:8px;color:var(--muted);font-size:.92rem}
+select,input[type=number]{background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:5px 8px;color:var(--ink)}
+.btn{border:1px solid var(--line);background:var(--surface);color:var(--ink);border-radius:8px;padding:6px 14px;cursor:pointer;font-weight:500}
+.btn:hover{border-color:var(--accent)}
+.btn.primary{background:var(--accent);color:var(--accent-ink);border-color:var(--accent)}
+.btn[disabled]{opacity:.5;cursor:not-allowed}
+.btn.on{background:var(--accent-soft);border-color:var(--accent);color:var(--ink)}
+.grow{flex:1}
+.status{font-size:.88rem;color:var(--muted);display:flex;align-items:center;gap:6px}
+.status i{width:8px;height:8px;border-radius:50%;background:var(--ok);display:inline-block}
+.status.busy i{background:var(--mark);animation:pulse 1s infinite}
+.status.err i{background:var(--warn)}
+.status.err{color:var(--warn)}
+@keyframes pulse{50%{opacity:.3}}
+@media (prefers-reduced-motion:reduce){.status.busy i{animation:none}}
+.pair{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+@media (max-width:760px){.pair{grid-template-columns:1fr}}
+.sheet{background:var(--sheet);border:1px solid var(--line);border-radius:var(--r);display:flex;flex-direction:column;min-width:0}
+.sheet h2{font-size:.78rem;letter-spacing:.08em;text-transform:uppercase;color:var(--muted);margin:0;padding:10px 16px;border-bottom:1px solid var(--line);display:flex;justify-content:space-between;gap:8px}
+.sheet textarea{border:0;background:transparent;resize:vertical;min-height:460px;padding:18px 20px;font-family:var(--letter);font-size:1.02rem;line-height:1.75;color:var(--ink);width:100%}
+.sheet textarea:focus{outline:none}
+.sheet .foot{display:flex;flex-wrap:wrap;gap:8px;padding:10px 14px;border-top:1px solid var(--line)}
+.notice{background:var(--accent-soft);border-radius:8px;padding:8px 12px;margin:10px 14px 0;font-size:.9rem;display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.drop{border:2px dashed var(--line);border-radius:var(--r);background:var(--surface);padding:36px 20px;text-align:center;color:var(--muted)}
+.drop.over{border-color:var(--accent);background:var(--accent-soft)}
+.drop strong{display:block;color:var(--ink);font-size:1.15rem;margin-bottom:4px}
+.drop input{display:none}
+.slides{display:grid;gap:12px}
+.slide{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);padding:12px 14px}
+.slide h3{margin:0 0 8px;font-size:.85rem;color:var(--muted);font-weight:500;letter-spacing:.04em}
+.slide textarea{width:100%;border:1px solid var(--line);background:var(--sheet);border-radius:8px;padding:6px 10px;font-family:var(--letter);font-size:.98rem;resize:vertical;min-height:2.4em;margin-bottom:6px;color:var(--ink)}
+.slide textarea.changed{border-color:var(--accent)}
+.pages{display:grid;gap:18px;justify-items:center}
+.pg{position:relative;width:100%;max-width:860px;box-shadow:0 1px 4px rgba(0,0,0,.18);background:#fff;touch-action:pan-y}
+.pg canvas{display:block;width:100%;height:auto}
+.pg.mode-text,.pg.mode-white{cursor:crosshair}
+.pg .num{position:absolute;right:8px;bottom:6px;font-size:.75rem;color:#777;background:#fff;padding:0 6px;border-radius:4px}
+.wo{position:absolute;background:#fff;outline:1px dashed transparent}
+.wo.sel{outline-color:var(--accent)}
+.tb{position:absolute;min-width:40px;color:#111;font-family:var(--letter);line-height:1.3;outline:1px dashed transparent;background:transparent}
+.tb.sel{outline-color:var(--accent)}
+.tb .txt{white-space:pre-wrap;word-break:break-word;min-height:1em;padding:1px 2px}
+.tb .txt:focus{outline:none}
+.tb .tools{position:absolute;top:-30px;left:-1px;display:none;gap:3px;background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:2px;font-family:var(--ui)}
+.tb.sel .tools,.wo.sel .tools{display:flex}
+.wo .tools{position:absolute;top:-30px;left:-1px;display:none;gap:3px;background:var(--surface);border:1px solid var(--line);border-radius:6px;padding:2px}
+.tools button{border:0;background:transparent;color:var(--ink);padding:1px 7px;border-radius:4px;cursor:pointer;font-size:.82rem;font-family:var(--ui)}
+.tools button:hover{background:var(--accent-soft)}
+.tools .grip{cursor:move;touch-action:none}
+.chk{display:flex;align-items:center;gap:6px;font-size:.9rem;color:var(--muted)}
+.sep{width:1px;align-self:stretch;background:var(--line)}
+details.lh{background:var(--surface);border:1px solid var(--line);border-radius:var(--r);margin-bottom:14px}
+details.lh summary{cursor:pointer;padding:10px 14px;font-weight:500}
+.lhgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px 16px;padding:4px 14px 14px}
+.lhgrid label{display:flex;flex-direction:column;gap:4px;font-size:.88rem;color:var(--muted)}
+.lhgrid input[type=text],.lhgrid textarea{background:var(--bg);border:1px solid var(--line);border-radius:8px;padding:6px 10px;color:var(--ink);font:inherit;resize:vertical}
+.sigrow{display:flex;flex-wrap:wrap;gap:8px;align-items:center}
+.sigrow img{max-height:48px;max-width:160px;background:#fff;border:1px solid var(--line);border-radius:6px;padding:2px}
+.hint{color:var(--muted);font-size:.9rem;margin:0 0 12px}
+.toast{position:fixed;left:50%;bottom:calc(20px + env(safe-area-inset-bottom,0px));transform:translateX(-50%);background:var(--ink);color:var(--bg);padding:8px 16px;border-radius:8px;font-size:.92rem;z-index:20;max-width:calc(100% - 32px)}
+footer{color:var(--muted);font-size:.82rem;margin-top:24px}
+</style>
+
+</head>
+<body>
+<div class="wrap">
+  <header class="bar">
+    <div class="brand"><b>Anuvad Desk</b><span>अनुवाद</span></div>
+    <nav class="tabs" role="tablist">
+      <button role="tab" id="tab-letter" aria-selected="true" data-view="letter">Letter</button>
+      <button role="tab" id="tab-ppt" aria-selected="false" data-view="ppt">PowerPoint</button>
+      <button role="tab" id="tab-pdf" aria-selected="false" data-view="pdf">PDF</button>
+    </nav>
+  </header>
+
+  <details class="lh" id="aiBox">
+    <summary>AI settings <span id="engineNote" style="color:var(--muted);font-weight:400"></span></summary>
+    <div class="lhgrid">
+      <label>Gemini API key (free, optional) <input type="text" id="gkey" placeholder="Paste your key here" autocomplete="off" spellcheck="false"></label>
+      <label>Gemini model <input type="text" id="gmodel" placeholder="gemini-2.5-flash-lite"></label>
+      <p class="hint" style="margin:0">Without a key the app still translates for free. A key adds formal letter style, Fix my English, Photo to text and Hinglish typing. Get one free at <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">aistudio.google.com/apikey</a>. It stays only in this browser.</p>
+    </div>
+  </details>
+  <div class="toolbar">
+    <label>Translate into
+      <select id="lang"></select>
+    </label>
+    <label>Style
+      <select id="style">
+        <option value="formal">Formal letter</option>
+        <option value="plain">Everyday</option>
+        <option value="translit">Hinglish → Hindi script</option>
+      </select>
+    </label>
+    <span class="grow"></span>
+    <button class="btn" id="installBtn" hidden>Install app</button>
+    <span class="status" id="status"><i></i><span>Ready</span></span>
+  </div>
+
+  <!-- LETTER -->
+  <section id="view-letter">
+    <div class="toolbar">
+      <label>Start from
+        <select id="tpl">
+          <option value="bank">Bank request (example)</option>
+          <option value="leave">Leave application</option>
+          <option value="complaint">Complaint letter</option>
+          <option value="job">Job application</option>
+          <option value="fee">School fee concession</option>
+          <option value="address">Address change request</option>
+          <option value="thanks">Thank-you letter</option>
+          <option value="blank">Blank page</option>
+        </select>
+      </label>
+      <button class="btn on" id="live" aria-pressed="true">Live translate: On</button>
+      <button class="btn" id="translateNow" title="Ctrl + Enter">Translate now</button>
+      <button class="btn" id="photoBtn" hidden>Photo to text</button>
+      <input type="file" id="photo" accept="image/jpeg,image/png,image/webp" hidden>
+      <button class="btn" id="polish">Fix my English</button>
+      <button class="btn" id="undoPolish" hidden>Undo fix</button>
+      <span class="sep"></span>
+      <button class="btn" id="saveLetter">Save letter</button>
+      <label>My letters <select id="saved"><option value="">None saved yet</option></select></label>
+      <button class="btn" id="delLetter" hidden>Delete</button>
+    </div>
+    <details class="lh" id="lhBox">
+      <summary>Letterhead and signature</summary>
+      <div class="lhgrid">
+        <label>Your name or organisation <input type="text" id="lhName" placeholder="Ramesh Kumar"></label>
+        <label>Address <textarea id="lhAddr" rows="2" placeholder="12, MG Road, Indore – 452001"></textarea></label>
+        <label>Phone or email <input type="text" id="lhContact" placeholder="98765 43210 · ramesh@example.com"></label>
+        <div class="lhgrid" style="padding:0;grid-template-columns:1fr">
+          <span class="chk" style="color:var(--muted)">Signature (photo of your sign on white paper)</span>
+          <div class="sigrow"><button class="btn" id="sigBtn">Add signature</button><input type="file" id="sigFile" accept="image/*" hidden><img id="sigPrev" alt="Your signature" hidden><button class="btn" id="sigDel" hidden>Remove</button></div>
+          <label class="chk" style="flex-direction:row"><input type="checkbox" id="lhOn"> Put letterhead on PDF</label>
+          <label class="chk" style="flex-direction:row"><input type="checkbox" id="sigOn"> Put signature on PDF</label>
+        </div>
+      </div>
+    </details>
+    <div class="pair">
+      <div class="sheet">
+        <h2><span>You write</span><span id="count">any language</span></h2>
+        <textarea id="src" spellcheck="true" aria-label="Your text"></textarea>
+      </div>
+      <div class="sheet">
+        <h2><span id="outLabel">Hindi</span><span>you can edit this too</span></h2>
+        <div class="notice" id="editedNote" hidden>You changed the translation, so live updates are paused.
+          <button class="btn" id="retranslate">Translate again</button></div>
+        <textarea id="out" aria-label="Translation"></textarea>
+        <div class="foot">
+          <button class="btn primary" id="dlPdf">Download PDF (to print)</button>
+          <button class="btn" id="printBtn">Print</button>
+          <button class="btn" id="dlDocx">Download Word</button>
+          <button class="btn" id="copyOut">Copy</button>
+          <button class="btn" id="listen" hidden>Listen</button>
+          <label class="chk"><input type="checkbox" id="bi"> English + translation in one PDF</label>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- PPT -->
+  <section id="view-ppt" hidden>
+    <label class="drop" id="pptDrop">
+      <strong>Open a PowerPoint file (.pptx)</strong>
+      Tap to choose, or drop it here. Every text box shows up below, slide by slide.
+      <input type="file" id="pptFile" accept=".pptx,application/vnd.openxmlformats-officedocument.presentationml.presentation">
+    </label>
+    <div id="pptWork" hidden>
+      <div class="toolbar">
+        <span id="pptName" class="grow"></span>
+        <button class="btn" id="pptTranslate">Translate all slides</button>
+        <button class="btn primary" id="pptSave">Download .pptx</button>
+        <button class="btn" id="pptClose">Close file</button>
+      </div>
+      <p class="hint">Edit any line. Changed lines are outlined. Layout, pictures and colours stay as they were.</p>
+      <div class="slides" id="slides"></div>
+    </div>
+  </section>
+
+  <!-- PDF -->
+  <section id="view-pdf" hidden>
+    <label class="drop" id="pdfDrop">
+      <strong>Open a PDF</strong>
+      Tap to choose, or drop it here. Then add text, hide old text, or translate.
+      <input type="file" id="pdfFile" accept="application/pdf,.pdf">
+    </label>
+    <div id="pdfWork" hidden>
+      <div class="toolbar">
+        <button class="btn" id="modeText" aria-pressed="false">Add text</button>
+        <button class="btn" id="modeWhite" aria-pressed="false">Hide old text</button>
+        <label>Size <input type="number" id="fs" min="6" max="72" value="14" style="width:64px"></label>
+        <button class="btn" id="boldBtn" aria-pressed="false" style="font-weight:700">B</button>
+        <label>Colour <select id="color"><option value="#111111">Black</option><option value="#1f3fa8">Blue</option><option value="#b42318">Red</option><option value="#1f7a4d">Green</option></select></label>
+        <span class="grow"></span>
+        <button class="btn" id="pdfToLetter">Translate whole PDF</button>
+        <button class="btn primary" id="pdfSave">Download PDF</button>
+        <button class="btn" id="pdfClose">Close file</button>
+      </div>
+      <p class="hint" id="pdfHint">Choose “Add text” and tap the page to type. Choose “Hide old text” and drag over words to cover them, then type new words on top.</p>
+      <div class="pages" id="pages"></div>
+    </div>
+  </section>
+
+  <footer>Free translation runs on your device in Chrome (desktop), or through the free MyMemory service. With a Gemini key, text goes to Google's Gemini. Files stay in your browser.</footer>
+</div>
+<div class="toast" id="toast" hidden></div>
+
+<script>
+(() => {
+const $ = s => document.querySelector(s);
+const LANGS = [["Hindi","हिन्दी"],["Marathi","मराठी"],["Gujarati","ગુજરાતી"],["Punjabi","ਪੰਜਾਬੀ"],["Bengali","বাংলা"],["Odia","ଓଡ଼ିଆ"],["Tamil","தமிழ்"],["Telugu","తెలుగు"],["Kannada","ಕನ್ನಡ"],["Malayalam","മലയാളം"],["Urdu","اردو"],["Nepali","नेपाली"],["Sanskrit","संस्कृतम्"],["English","English"],["French","Français"],["German","Deutsch"],["Spanish","Español"],["Arabic","العربية"],["Russian","Русский"],["Japanese","日本語"],["Chinese (Simplified)","中文"],["Korean","한국어"]];
+const store = {get(k,d){try{const v=localStorage.getItem("anuvad:"+k);return v==null?d:JSON.parse(v)}catch{return d}},set(k,v){try{localStorage.setItem("anuvad:"+k,JSON.stringify(v))}catch{}}};
+
+/* ---------- UI helpers ---------- */
+const langSel=$("#lang"), styleSel=$("#style");
+for(const [en,nat] of LANGS){const o=document.createElement("option");o.value=en;o.textContent=en===nat?en:`${en} · ${nat}`;langSel.append(o)}
+langSel.value=store.get("lang","Hindi"); styleSel.value=store.get("style","formal");
+let toastT; function toast(msg){const t=$("#toast");t.textContent=msg;t.hidden=false;clearTimeout(toastT);toastT=setTimeout(()=>t.hidden=true,3200)}
+function setStatus(kind,msg){const s=$("#status");s.className="status"+(kind?" "+kind:"");s.lastElementChild.textContent=msg}
+
+/* ---------- Engines (standalone web version) ----------
+   Free by default: Chrome's built-in on-device translator, then the free MyMemory service.
+   Optional: a free Gemini API key (kept only in this browser) unlocks formal style, Fix my English,
+   Photo to text and Hinglish typing. */
+const LCODE={Hindi:"hi",Marathi:"mr",Gujarati:"gu",Punjabi:"pa",Bengali:"bn",Odia:"or",Tamil:"ta",Telugu:"te",Kannada:"kn",Malayalam:"ml",Urdu:"ur",Nepali:"ne",Sanskrit:"sa",English:"en",French:"fr",German:"de",Spanish:"es",Arabic:"ar",Russian:"ru",Japanese:"ja","Chinese (Simplified)":"zh",Korean:"ko"};
+function makeGemini(key,model){
+  const url=`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${encodeURIComponent(key)}`;
+  async function call(prompt,opts={},json=false){
+    const parts=[{text:prompt}];
+    for(const b of [].concat(opts.images||[])){const d=await new Promise(r=>{const f=new FileReader();f.onload=()=>r(f.result);f.readAsDataURL(b)});parts.push({inline_data:{mime_type:b.type||"image/jpeg",data:String(d).split(",")[1]}})}
+    let r;try{r=await fetch(url,{method:"POST",headers:{"Content-Type":"application/json"},signal:opts.signal,body:JSON.stringify({contents:[{role:"user",parts}],generationConfig:{temperature:0.2,...(json?{responseMimeType:"application/json"}:{})}})})}
+    catch(e){throw {code:e?.name==="AbortError"?"cancelled":"upstream_error"}}
+    if(r.status===400||r.status===403)throw {code:"bad_key"};
+    if(r.status===429)throw {code:"rate_limited"};
+    if(!r.ok)throw {code:"upstream_error"};
+    const j=await r.json();const text=(j.candidates?.[0]?.content?.parts||[]).map(p=>p.text||"").join("");
+    if(!text.trim())throw {code:"refused"};
+    return text;
+  }
+  const sample=async(prompt,opts)=>({text:await call(prompt,opts)});
+  sample.json=async(prompt,opts)=>{const t=await call(prompt,opts,true);try{return JSON.parse(t)}catch{const m=t.match(/[\[{][\s\S]*[\]}]/);if(m)try{return JSON.parse(m[0])}catch{}throw {code:"invalid_json"}}};
+  sample.limits=async()=>({maxPromptBytes:262144,images:{maxCount:10,maxInputBytes:2e7,mediaTypes:["image/jpeg","image/png","image/webp"]}});
+  return sample;
+}
+const getSample=async()=>{const k=store.get("gkey","").trim();return k?makeGemini(k,store.get("gmodel","gemini-2.5-flash-lite")):null};
+/* Inside the Android app (Capacitor) files are shared through Android's share sheet,
+   and translation runs offline on the phone with Google ML Kit. */
+const NATIVE=!!window.Capacitor?.isNativePlatform?.();
+const NP=NATIVE?{tr:Capacitor.registerPlugin("Translation"),fs:Capacitor.registerPlugin("Filesystem"),share:Capacitor.registerPlugin("Share")}:null;
+const MLKIT=new Set("af ar be bg bn ca cs cy da de el en eo es et fa fi fr ga gl gu he hi hr ht hu id is it ja ka kn ko lt lv mk mr ms mt nl no pl pt ro ru sk sl sq sv sw ta te th tl tr uk ur vi zh".split(" "));
+const blobToB64=b=>new Promise((res,rej)=>{const f=new FileReader();f.onload=()=>res(String(f.result).split(",")[1]);f.onerror=rej;f.readAsDataURL(b)});
+async function nativeSave(filename,data){
+  const b=data instanceof Blob?data:new Blob([data]);
+  const {uri}=await NP.fs.writeFile({path:filename,data:await blobToB64(b),directory:"CACHE"});
+  try{await NP.share.share({title:filename,url:uri,dialogTitle:"Save or share "+filename})}catch{}
+  return{status:"saved"};
+}
+const getDownloads=NATIVE?async()=>({save:({filename,data})=>nativeSave(filename,data)}):async()=>({save:async({filename,data})=>{const u=URL.createObjectURL(data instanceof Blob?data:new Blob([data]));const a=document.createElement("a");a.href=u;a.download=filename;document.body.append(a);a.click();a.remove();setTimeout(()=>URL.revokeObjectURL(u),60000);return{status:"saved"}}});
+let blocked=false;
+const ERR={bad_key:"Your Gemini key was not accepted. Check it in AI settings.",needs_key:"This needs a free Gemini key. Add one in AI settings (top of the page).",rate_limited:"Too many requests just now. Wait a minute, then press Translate now.",refused:"The text could not be translated.",invalid_json:"The translation came back in a bad shape. Press Translate now to try again.",unavailable:"No translator is available. Use Chrome on a computer, or add a free Gemini key in AI settings."};
+function errMsg(e){return ERR[e?.code]||"Translation failed. Check your internet and press Translate now."}
+
+let detector=null;const trs={};
+const within=(p,ms)=>Promise.race([p,new Promise((_,rej)=>setTimeout(()=>rej(new Error("timeout")),ms))]);
+
+async function detectLang(t){
+  if("LanguageDetector" in self&&detector!==false){try{if(!detector){const mk=LanguageDetector.create();detector=false;mk.then(d=>detector=d,()=>{});detector=await within(mk,3000)}const r=await within(detector.detect(t),3000);const l=r?.[0]?.detectedLanguage;if(l&&l!=="und"&&(r[0].confidence??1)>0.4)return l.split("-")[0]}catch{}}
+  if(/[ऀ-ॿ]/.test(t))return "hi";if(/[؀-ۿ]/.test(t))return "ur";if(/[஀-௿]/.test(t))return "ta";if(/[ఀ-౿]/.test(t))return "te";if(/[ঀ-৿]/.test(t))return "bn";if(/[઀-૿]/.test(t))return "gu";
+  return "en";
+}
+async function chromeTranslator(s,t){
+  if(!("Translator" in self))return null;const k=s+">"+t;if(k in trs)return trs[k];
+  trs[k]=null; // use the free online service until the on-device model is ready
+  try{const a=await within(Translator.availability({sourceLanguage:s,targetLanguage:t}),5000);if(a==="unavailable")return null;
+    const made=Translator.create({sourceLanguage:s,targetLanguage:t});made.then(tr=>trs[k]=tr,()=>{});
+    return await within(made,a==="available"?8000:4000);}catch{return null}
+}
+async function myMemory(text,s,t,signal){
+  const pieces=text.match(/[\s\S]{1,450}(?:[.!?।]\s+|$)|[\s\S]{1,450}/g)||[text];let out="";
+  for(const p of pieces){if(!p.trim()){out+=p;continue}
+    const r=await fetch(`https://api.mymemory.translated.net/get?q=${encodeURIComponent(p.trim())}&langpair=${s}|${t}`,{signal}).catch(()=>{throw {code:"upstream_error"}});
+    const j=await r.json().catch(()=>({}));
+    if(j.responseStatus==429||/QUOTA|LIMIT/i.test(j.responseDetails||""))throw {code:"rate_limited"};
+    if(j.responseStatus!=200&&j.responseStatus!=="200")throw {code:"upstream_error"};
+    const d=document.createElement("textarea");d.innerHTML=j.responseData.translatedText;out+=d.value+(/\s$/.test(p)?" ":"");}
+  return out.trim();
+}
+const mlGot=new Set();
+async function mlEnsure(l){if(mlGot.has(l))return;const {languages=[]}=await NP.tr.getDownloadedModels().catch(()=>({}));languages.forEach(x=>mlGot.add(x));
+  if(!mlGot.has(l)){setStatus("busy","Downloading the offline language pack (one time, about 30 MB)…");await NP.tr.downloadModel({language:l});mlGot.add(l)}}
+async function mlTranslate(text,s,t){await mlEnsure(s);await mlEnsure(t);setStatus("busy","Translating…");return (await NP.tr.translate({text,sourceLanguage:s,targetLanguage:t})).text}
+async function freeTranslate(items,signal){
+  const t=LCODE[langSel.value]||"hi";const res=[];
+  for(const item of items){
+    const s=await detectLang(item);if(s===t){res.push(item);continue}
+    const lines=item.split("\n");const out=[];
+    const useML=NATIVE&&MLKIT.has(s)&&MLKIT.has(t);const tr=useML?{translate:x=>mlTranslate(x,s,t)}:await chromeTranslator(s,t);
+    for(const line of lines){if(!line.trim()){out.push(line);continue}
+      if(signal?.aborted)throw {code:"cancelled"};
+      let r=null;if(tr){try{r=await within(tr.translate(line),useML?180000:15000)}catch{r=null}}
+      out.push(r??await myMemory(line,s,t,signal));}
+    res.push(out.join("\n"));
+  }
+  return res;
+}
+
+async function translateList(items,{signal}={}){
+  if(!items.length) return [];
+  const sample=await getSample();
+  if(!sample){if(styleSel.value==="translit")throw {code:"needs_key"};return freeTranslate(items,signal)}
+  const lang=langSel.value, formal=styleSel.value==="formal", translit=styleSel.value==="translit";
+  const out=[];
+  for(let i=0;i<items.length;i+=40){
+    const chunk=items.slice(i,i+40);
+    const prompt=translit?`Convert every string in the JSON array below from Hinglish (Hindi written in Roman/English letters) into Hindi written in Devanagari script.
+This is transliteration, not translation: keep the exact same words and meaning, only change the script (for example "kal milte hain" becomes "कल मिलते हैं", "aap kaise ho" becomes "आप कैसे हो"). Use correct, natural Hindi spelling.
+English words that people normally use in Hindi (meeting, office, bank, mobile) are written in Devanagari too (मीटिंग, ऑफिस, बैंक, मोबाइल). Keep numbers, emails, URLs and line breaks (\\n) exactly. Text already in Devanagari stays unchanged. Do not add notes.
+Reply with only a JSON array of ${chunk.length} strings, in the same order.
+
+${JSON.stringify(chunk)}`:`You are a professional translator. Translate every string in the JSON array below into ${lang}.
+The input may be in English, Hinglish (Hindi written in Roman letters), or any other language; detect it yourself.
+${formal?`Use a formal, respectful register suitable for official letters and documents${lang==="Hindi"?' (for example "सेवा में", "विषय", "महोदय", "भवदीय", "कृपया")':''}.`:"Use natural, everyday language that a native speaker would actually write."}
+Keep line breaks (\\n), numbers, dates, names of people, account numbers, emails and URLs exactly. Translate common words but keep well-known brand names. If a string is already in ${lang}, return it unchanged. Do not add notes or explanations.
+Reply with only a JSON array of ${chunk.length} strings, in the same order.
+
+${JSON.stringify(chunk)}`;
+    const res=await sample.json(prompt,{modelTier:"quick",signal});
+    if(!Array.isArray(res)||res.length!==chunk.length) throw {code:"invalid_json"};
+    out.push(...res.map(x=>String(x??"")));
+  }
+  return out;
+}
+
+/* ---------- Tabs ---------- */
+const views=["letter","ppt","pdf"];
+function show(v){views.forEach(n=>{$("#view-"+n).hidden=n!==v;$("#tab-"+n).setAttribute("aria-selected",String(n===v))});store.set("view",v)}
+document.querySelectorAll("nav.tabs button").forEach(b=>b.onclick=()=>show(b.dataset.view));
+const hv=(location.hash||"").slice(1); show(views.includes(hv)?hv:store.get("view","letter"));
+
+/* ---------- Letter ---------- */
+const TPL={
+bank:`To,
+The Branch Manager,
+State Bank of India,
+Main Road, Indore
+
+Subject: Request to update mobile number in my savings account
+
+Dear Sir,
+
+I am writing to request you to update the mobile number linked to my savings account no. 3021 4587 9910. My old number is no longer in use. Please register my new number 98765 43210 for SMS alerts and OTPs.
+
+I have attached a copy of my Aadhaar card and passbook for verification. Kindly do the needful at the earliest.
+
+Thanking you,
+
+Yours faithfully,
+Ramesh Kumar
+Date: 23 October 2026`,
+leave:`To,
+The Principal,
+Government Higher Secondary School,
+Bhopal
+
+Subject: Application for three days' leave
+
+Respected Sir,
+
+I am a student of Class 10 B. I request you to grant me leave from 27 October to 29 October 2026, as I have to attend my elder sister's wedding in my village.
+
+I will complete all the classwork I miss after I return.
+
+Thanking you,
+
+Yours obediently,
+Priya Sharma
+Class 10 B, Roll No. 18`,
+complaint:`To,
+The Executive Engineer,
+Municipal Corporation,
+Ward No. 12, Lucknow
+
+Subject: Complaint about irregular water supply
+
+Sir,
+
+The residents of Gali No. 4, Indira Nagar have not been getting regular water supply for the last ten days. Water comes for only 20 minutes in the morning, and the pressure is very low.
+
+We request you to look into this matter and restore normal supply as soon as possible.
+
+Yours faithfully,
+Suresh Verma
+On behalf of the residents of Gali No. 4`,
+job:`To,
+The HR Manager,
+Sunrise Textiles Pvt. Ltd.,
+Industrial Area, Surat
+
+Subject: Application for the post of Accounts Assistant
+
+Dear Sir/Madam,
+
+I came to know about the vacancy for Accounts Assistant through your advertisement in Dainik Bhaskar dated 20 October 2026. I would like to apply for this post.
+
+I have completed B.Com from Veer Narmad South Gujarat University and have two years of experience in Tally and GST filing. I am hardworking, punctual and good with numbers.
+
+I have attached my resume and certificates. I will be grateful for a chance to meet you for an interview.
+
+Yours faithfully,
+Anil Patel
+Mobile: 98250 12345`,
+fee:`To,
+The Principal,
+Saraswati Vidya Mandir,
+Jaipur
+
+Subject: Request for fee concession
+
+Respected Sir/Madam,
+
+I am the father of Rohit Meena, a student of Class 8 A. My monthly income is very low and I am finding it difficult to pay the full school fee this year.
+
+I humbly request you to grant my son a fee concession for the current session. He is a sincere student and has always done well in his studies.
+
+I shall be very thankful to you.
+
+Yours faithfully,
+Ramlal Meena
+Father of Rohit Meena, Class 8 A`,
+address:`To,
+The Branch Manager,
+Punjab National Bank,
+Civil Lines, Kanpur
+
+Subject: Request to change address in my account
+
+Dear Sir,
+
+I have recently shifted to a new house. Please update the address in my savings account no. 4410 2290 7712.
+
+Old address: 14, Shastri Nagar, Kanpur
+New address: 52, Arya Nagar, Kanpur – 208002
+
+A copy of my new electricity bill is attached as address proof.
+
+Thanking you,
+
+Yours faithfully,
+Neha Gupta`,
+thanks:`Dear Mr. Sharma,
+
+Thank you very much for your help during my father's stay in the hospital last week. Your support and timely advice meant a lot to our whole family.
+
+We will always remember your kindness. Please let me know whenever I can be of any help to you.
+
+With warm regards,
+Kavita Singh`,
+blank:""};
+// The example letter opens already translated, so the page shows what it does before anything is typed.
+const SEED_HI=[
+"सेवा में,\nशाखा प्रबंधक,\nभारतीय स्टेट बैंक,\nमेन रोड, इंदौर",
+"विषय: मेरे बचत खाते में मोबाइल नंबर अपडेट करने हेतु अनुरोध",
+"महोदय,",
+"मैं आपसे अनुरोध करता हूँ कि मेरे बचत खाता संख्या 3021 4587 9910 से जुड़ा मोबाइल नंबर अपडेट कर दिया जाए। मेरा पुराना नंबर अब उपयोग में नहीं है। कृपया SMS अलर्ट और OTP के लिए मेरा नया नंबर 98765 43210 पंजीकृत करें।",
+"सत्यापन के लिए मैंने अपने आधार कार्ड और पासबुक की प्रति संलग्न की है। कृपया इस कार्य को शीघ्र करने की कृपा करें।",
+"धन्यवाद सहित,",
+"भवदीय,\nरमेश कुमार\nदिनांक: 23 अक्टूबर 2026"];
+const cache=new Map(); const key=b=>langSel.value+"|"+styleSel.value+"|"+b;
+const splitBlocks=t=>t.split(/\n[ \t]*\n/).map(s=>s.replace(/\s+$/,""));
+splitBlocks(TPL.bank).forEach((b,i)=>cache.set("Hindi|formal|"+b,SEED_HI[i]));
+
+const src=$("#src"), out=$("#out");
+let live=store.get("live",true), outEdited=false, ctl=null, timer=null, seq=0;
+function paintLive(){const b=$("#live");b.textContent="Live translate: "+(live?"On":"Off");b.classList.toggle("on",live);b.setAttribute("aria-pressed",String(live))}
+paintLive();
+function paintLabel(){const t=styleSel.value==="translit";$("#outLabel").textContent=t?"Hindi script":langSel.value;langSel.disabled=t}
+paintLabel();
+src.value=store.get("draft",null)??TPL.bank;
+if(store.get("draft",null)==null) $("#tpl").value="bank"; else $("#tpl").value=store.get("tpl","blank");
+
+function assemble(){const blocks=splitBlocks(src.value);return blocks.map(b=>b.trim()?cache.get(key(b)):"")}
+function renderOut(){if(outEdited)return;const parts=assemble();out.value=parts.map(p=>p??"…").join("\n\n")}
+async function runTranslate(force){
+  if(outEdited&&!force) return;
+  const blocks=splitBlocks(src.value).filter(b=>b.trim());
+  const missing=[...new Set(blocks.filter(b=>!cache.has(key(b))))];
+  renderOut();
+  if(!missing.length){setStatus("", src.value.trim()?"Up to date":"Ready");return}
+  ctl?.abort(); ctl=new AbortController(); const my=++seq;
+  setStatus("busy","Translating…");
+  try{
+    const res=await translateList(missing,{signal:ctl.signal});
+    missing.forEach((b,i)=>cache.set(key(b),res[i]));
+    if(my===seq){renderOut();setStatus("","Up to date")}
+  }catch(e){
+    if(e?.code==="cancelled") return;
+    if(e?.code==="bad_key"){blocked=true;live=false;paintLive()}
+    setStatus("err",errMsg(e));
+  }
+}
+function schedule(){store.set("draft",src.value);if(!live||blocked)return renderOut();clearTimeout(timer);timer=setTimeout(()=>runTranslate(false),1100)}
+src.addEventListener("input",()=>{renderOut();schedule()});
+out.addEventListener("input",()=>{outEdited=true;$("#editedNote").hidden=false});
+$("#retranslate").onclick=()=>{outEdited=false;$("#editedNote").hidden=true;runTranslate(true)};
+$("#translateNow").onclick=()=>{outEdited=false;$("#editedNote").hidden=true;blocked=false;runTranslate(true)};
+$("#live").onclick=()=>{live=!live;store.set("live",live);paintLive();if(live)schedule()};
+$("#tpl").onchange=e=>{src.value=TPL[e.target.value];store.set("tpl",e.target.value);outEdited=false;$("#editedNote").hidden=true;renderOut();schedule();src.focus()};
+langSel.onchange=()=>{store.set("lang",langSel.value);paintLabel();outEdited=false;$("#editedNote").hidden=true;renderOut();schedule()};
+styleSel.onchange=()=>{store.set("style",styleSel.value);paintLabel();outEdited=false;renderOut();schedule()};
+renderOut(); setStatus("", "Ready");
+
+$("#copyOut").onclick=async()=>{try{await navigator.clipboard.writeText(out.value);toast("Copied")}catch{out.focus();out.select();toast("Text selected. Press Ctrl+C or long-press to copy.")}};
+
+async function saveFile(filename,blob){
+  const dl=await getDownloads();
+  try{await dl.save({filename,data:blob});toast("Saved "+filename)}catch{toast("Could not save the file.")}
+}
+const fname=(base,ext)=>(base||"document").replace(/[\\/:*?"<>|]+/g,"").slice(0,70).trim()+"."+ext;
+function letterName(){const m=src.value.match(/Subject:\s*(.+)/i);let t=m?m[1].trim():"Letter";if(t.length>48)t=t.slice(0,48).replace(/\s+\S*$/,"");return t+" ("+langSel.value+")"}
+
+/* Letter → PDF: the browser lays out the text on A4 canvases, so every script (Devanagari, Tamil, Urdu…) is shaped correctly. */
+async function textToPdf(input){
+  const sections=Array.isArray(input)?input:[input];
+  await document.fonts.load('400 20px "Noto Serif Devanagari"').catch(()=>{});
+  const W=1240,H=1754,M=150,B=110,FS=31,LH=FS*1.75; // A4 at 150 dpi, ~15pt type
+  const font=`400 ${FS}px "Noto Serif Devanagari","Nirmala UI","Mangal",serif`;
+  const pages=[]; let c,ctx,y;
+  const newPage=()=>{c=document.createElement("canvas");c.width=W;c.height=H;ctx=c.getContext("2d");ctx.fillStyle="#fff";ctx.fillRect(0,0,W,H);ctx.fillStyle="#111";ctx.font=font;ctx.textBaseline="top";y=M;pages.push(c)};
+  const lh=letterhead(), sig=lh.sigOn&&lh.sig?await loadImg(lh.sig):null;
+  for(const text of sections){
+  newPage();
+  if(lh.on&&(lh.name||lh.addr||lh.contact)){
+    ctx.textAlign="center";const cx=W/2;y=90;
+    if(lh.name){ctx.font=`600 46px "Noto Serif Devanagari","Nirmala UI",serif`;ctx.fillText(lh.name,cx,y);y+=66}
+    ctx.font=`400 25px "Noto Serif Devanagari","Nirmala UI",serif`;ctx.fillStyle="#333";
+    for(const l of [...lh.addr.split("\n"),lh.contact].filter(x=>x&&x.trim())){ctx.fillText(l.trim(),cx,y);y+=38}
+    y+=12;ctx.fillStyle="#111";ctx.fillRect(M,y,W-2*M,3);y+=50;ctx.font=font;ctx.textAlign="left";
+  }
+  const rtl=/[\u0600-\u06FF]/.test(text);
+  if(rtl){ctx.direction="rtl"}
+  // The signature goes under the closing ("Yours faithfully", "भवदीय"…), above the name; with no closing, at the end.
+  const paras=text.split("\n");const CLOSE=/^\s*(yours\b|sincerely|with (warm |best |kind )?regards|regards|भवदीय|भवदीया|आपका|आपकी|विनीत|प्रार्थी|शुभेच्छु)/i;
+  let sigAt=paras.length;paras.forEach((p,i)=>{if(CLOSE.test(p))sigAt=i+1});
+  const drawSig=()=>{const h=100,w=Math.min(360,sig.width*h/sig.height);if(y+h>H-B)newPage();ctx.drawImage(sig,rtl?W-M-w:M,y,w,h);y+=h+6};
+  for(const [pi,para] of [...paras,""].entries()){
+    if(sig&&pi===sigAt)drawSig();
+    if(pi===paras.length)break;
+    const words=para.split(/(\s+)/); let line="";
+    const flush=()=>{if(y+LH>H-B){newPage();if(rtl)ctx.direction="rtl"}ctx.textAlign=rtl?"right":"left";ctx.fillText(line.trim(),rtl?W-M:M,y);y+=LH;line=""};
+    if(!para.trim()){y+=LH;if(y>H-B)newPage();continue}
+    for(const w of words){const t=line+w;if(ctx.measureText(t.trim()).width>W-2*M&&line.trim()){flush();line=w.trimStart()}else line=t}
+    if(line.trim())flush();
+  }
+  }
+  const {jsPDF}=window.jspdf; const doc=new jsPDF({unit:"pt",format:"a4"});
+  pages.forEach((p,i)=>{if(i)doc.addPage("a4","p");doc.addImage(p.toDataURL("image/jpeg",0.92),"JPEG",0,0,595.28,841.89)});
+  return doc.output("blob");
+}
+$("#dlPdf").onclick=async()=>{if(!out.value.trim())return toast("Nothing to save yet.");const b=await textToPdf($("#bi").checked&&src.value.trim()?[src.value,out.value]:out.value);saveFile(fname(letterName(),"pdf"),b)};
+
+function letterhead(){return{on:$("#lhOn").checked,sigOn:$("#sigOn").checked,name:$("#lhName").value.trim(),addr:$("#lhAddr").value,contact:$("#lhContact").value.trim(),sig:store.get("sig","")}}
+function loadImg(url){return new Promise(r=>{const i=new Image();i.onload=()=>r(i);i.onerror=()=>r(null);i.src=url})}
+const esc=s=>s.replace(/[&<>"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]));
+async function textToDocx(text){
+  const z=new JSZip();
+  z.file("[Content_Types].xml",`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types"><Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/><Default Extension="xml" ContentType="application/xml"/><Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/></Types>`);
+  z.file("_rels/.rels",`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships"><Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/></Relationships>`);
+  const rpr=`<w:rPr><w:rFonts w:ascii="Nirmala UI" w:hAnsi="Nirmala UI" w:cs="Nirmala UI"/><w:sz w:val="24"/><w:szCs w:val="24"/></w:rPr>`;
+  const paras=text.split("\n").map(l=>`<w:p><w:pPr><w:spacing w:after="60"/></w:pPr><w:r>${rpr}<w:t xml:space="preserve">${esc(l)}</w:t></w:r></w:p>`).join("");
+  z.file("word/document.xml",`<?xml version="1.0" encoding="UTF-8" standalone="yes"?><w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main"><w:body>${paras}<w:sectPr><w:pgSz w:w="11906" w:h="16838"/><w:pgMar w:top="1440" w:right="1440" w:bottom="1440" w:left="1440" w:header="708" w:footer="708" w:gutter="0"/></w:sectPr></w:body></w:document>`);
+  return z.generateAsync({type:"blob"});
+}
+$("#dlDocx").onclick=async()=>{if(!out.value.trim())return toast("Nothing to save yet.");saveFile(fname(letterName(),"docx"),await textToDocx(out.value))};
+
+/* ---------- Letter extras ---------- */
+function updateCount(){const w=(src.value.trim().match(/\S+/g)||[]).length;$("#count").textContent=w?`${w} words · ${src.value.length} characters`:"any language"}
+src.addEventListener("input",updateCount);updateCount();
+document.addEventListener("keydown",e=>{if((e.ctrlKey||e.metaKey)&&e.key==="Enter"&&!$("#view-letter").hidden){e.preventDefault();$("#translateNow").click()}});
+
+let beforePolish=null;
+$("#polish").onclick=async e=>{
+  const btn=e.currentTarget;if(!src.value.trim())return toast("Write something first.");
+  const sample=await getSample();if(!sample)return setStatus("err",ERR.needs_key);
+  btn.disabled=true;setStatus("busy","Fixing your English…");
+  try{
+    const {text}=await sample(`Correct the spelling, grammar and punctuation of the text below and make it sound clear and polite, suitable for a letter or document. If parts are in Hinglish or Hindi, rewrite them in proper English. Keep the meaning, the layout (line breaks and blank lines), names, numbers and dates exactly. Do not add new content. Reply with only the corrected text.\n\n${src.value}`,{modelTier:"quick"});
+    beforePolish=src.value;src.value=text.trim();$("#undoPolish").hidden=false;store.set("draft",src.value);updateCount();
+    outEdited=false;$("#editedNote").hidden=true;setStatus("","English fixed");runTranslate(true);
+  }catch(err){setStatus("err",errMsg(err))}finally{btn.disabled=false}
+};
+$("#undoPolish").onclick=()=>{if(beforePolish==null)return;src.value=beforePolish;beforePolish=null;$("#undoPolish").hidden=true;store.set("draft",src.value);updateCount();renderOut();schedule()};
+
+/* Saved letters live in this browser only. */
+const savedSel=$("#saved");
+function letters(){return store.get("letters",[])}
+function paintSaved(selId){const list=letters();savedSel.replaceChildren();
+  const o0=document.createElement("option");o0.value="";o0.textContent=list.length?`Choose (${list.length})`:"None saved yet";savedSel.append(o0);
+  for(const l of list){const o=document.createElement("option");o.value=l.id;o.textContent=`${l.title} · ${l.lang}`;savedSel.append(o)}
+  savedSel.value=selId||"";$("#delLetter").hidden=!savedSel.value}
+paintSaved();
+function titleOf(t){const m=t.match(/Subject:\s*(.+)/i);const line=(m?m[1]:t.split("\n").find(x=>x.trim())||"Untitled").trim();return line.length>42?line.slice(0,42).replace(/\s+\S*$/,"")+"…":line}
+$("#saveLetter").onclick=()=>{
+  if(!src.value.trim())return toast("Nothing to save yet.");
+  const list=letters();const cur=savedSel.value&&list.find(l=>l.id===savedSel.value);
+  const rec={id:cur?cur.id:String(Date.now()),title:titleOf(src.value),src:src.value,out:out.value,lang:langSel.value,style:styleSel.value,ts:Date.now()};
+  const next=cur?list.map(l=>l.id===cur.id?rec:l):[rec,...list];store.set("letters",next);paintSaved(rec.id);toast(cur?"Letter updated":"Letter saved in this browser");
+};
+let resumeOnType=false;
+savedSel.onchange=()=>{const l=letters().find(x=>x.id===savedSel.value);$("#delLetter").hidden=!l;if(!l)return;
+  langSel.value=l.lang;styleSel.value=l.style;paintLabel();src.value=l.src;out.value=l.out;
+  outEdited=true;resumeOnType=true;$("#editedNote").hidden=true;store.set("draft",l.src);updateCount();setStatus("","Opened “"+l.title+"”")};
+src.addEventListener("input",()=>{if(resumeOnType){resumeOnType=false;outEdited=false;renderOut()}});
+$("#delLetter").onclick=()=>{const id=savedSel.value;if(!id)return;const btn=$("#delLetter");
+  if(btn.dataset.confirm!=="1"){btn.dataset.confirm="1";btn.textContent="Press again to delete";setTimeout(()=>{btn.dataset.confirm="";btn.textContent="Delete"},3000);return}
+  btn.dataset.confirm="";btn.textContent="Delete";store.set("letters",letters().filter(l=>l.id!==id));paintSaved();toast("Letter deleted")};
+
+/* Read aloud with the device's own voices, where the browser allows it. */
+const SPEECH={Hindi:"hi-IN",Marathi:"mr-IN",Gujarati:"gu-IN",Punjabi:"pa-IN",Bengali:"bn-IN",Odia:"or-IN",Tamil:"ta-IN",Telugu:"te-IN",Kannada:"kn-IN",Malayalam:"ml-IN",Urdu:"ur-IN",Nepali:"ne-NP",English:"en-IN",French:"fr-FR",German:"de-DE",Spanish:"es-ES",Arabic:"ar-SA",Russian:"ru-RU",Japanese:"ja-JP","Chinese (Simplified)":"zh-CN",Korean:"ko-KR"};
+if("speechSynthesis" in window){const lb=$("#listen");lb.hidden=false;
+  lb.onclick=()=>{try{
+    if(speechSynthesis.speaking){speechSynthesis.cancel();lb.textContent="Listen";return}
+    if(!out.value.trim())return toast("Nothing to read yet.");
+    const u=new SpeechSynthesisUtterance(out.value);u.lang=SPEECH[langSel.value]||"hi-IN";
+    const v=speechSynthesis.getVoices().find(v=>v.lang.replace("_","-").startsWith(u.lang.slice(0,2)));if(v)u.voice=v;
+    u.onend=u.onerror=()=>lb.textContent="Listen";lb.textContent="Stop";speechSynthesis.speak(u);
+  }catch{toast("Reading aloud is not available here.")}}}
+
+/* ---------- Photo to text ---------- */
+async function readImages(images){
+  const sample=await getSample();
+  const {text}=await sample(`Read all the text in the attached image(s) of a document, exactly as written and in its original language. Keep the line breaks, and put a blank line between paragraphs. Do not translate, summarise, explain or add anything. If several images are attached, they are pages in order. If there is no readable text, reply with exactly: NO_TEXT`,{images,modelTier:"default"});
+  const t=text.trim();return t==="NO_TEXT"?"":t;
+}
+$("#photoBtn").hidden=false;
+$("#photoBtn").onclick=async()=>{if(!await getSample()){setStatus("err",ERR.needs_key);$("#aiBox").open=true;return}$("#photo").click()};
+$("#photo").onchange=async()=>{
+  const f=$("#photo").files[0];$("#photo").value="";if(!f)return;
+  const btn=$("#photoBtn");btn.disabled=true;setStatus("busy","Reading the photo… this can take up to a minute");
+  try{const t=await readImages([f]);
+    if(!t){setStatus("err","No readable text was found in that photo. Try a clearer, straight photo.");return}
+    src.value=t;store.set("draft",t);updateCount();outEdited=false;$("#editedNote").hidden=true;renderOut();setStatus("","Photo read");runTranslate(true);
+  }catch(e){setStatus("err",e?.code==="image_rejected"?"That photo could not be used. Try a JPG or PNG under 20 MB.":errMsg(e))}
+  finally{btn.disabled=false}
+};
+
+/* ---------- Letterhead & signature (kept in this browser) ---------- */
+for(const id of ["lhName","lhAddr","lhContact"]){const el=$("#"+id);el.value=store.get(id,"");el.addEventListener("input",()=>store.set(id,el.value))}
+for(const id of ["lhOn","sigOn"]){const el=$("#"+id);el.checked=store.get(id,false);el.addEventListener("change",()=>store.set(id,el.checked))}
+function paintSig(){const d=store.get("sig","");$("#sigPrev").hidden=!d;$("#sigDel").hidden=!d;if(d)$("#sigPrev").src=d;$("#sigBtn").textContent=d?"Change signature":"Add signature"}
+paintSig();
+$("#sigBtn").onclick=()=>$("#sigFile").click();
+$("#sigFile").onchange=async()=>{
+  const f=$("#sigFile").files[0];$("#sigFile").value="";if(!f)return;
+  const img=await loadImg(URL.createObjectURL(f));if(!img)return toast("That image could not be opened.");
+  // Shrink, and turn the white paper transparent so only the ink is printed.
+  const sc=Math.min(1,600/img.width,240/img.height);const c=document.createElement("canvas");c.width=Math.round(img.width*sc);c.height=Math.round(img.height*sc);
+  const ctx=c.getContext("2d");ctx.drawImage(img,0,0,c.width,c.height);const d=ctx.getImageData(0,0,c.width,c.height);
+  for(let i=0;i<d.data.length;i+=4){const v=(d.data[i]+d.data[i+1]+d.data[i+2])/3;if(v>185)d.data[i+3]=0}
+  ctx.putImageData(d,0,0);store.set("sig",c.toDataURL("image/png"));$("#sigOn").checked=true;store.set("sigOn",true);paintSig();toast("Signature added");
+};
+$("#sigDel").onclick=()=>{store.set("sig","");paintSig();toast("Signature removed")};
+
+/* ---------- Web extras: AI settings, print, install ---------- */
+function paintEngine(){const k=store.get("gkey","").trim();$("#engineNote").textContent=k?"· Gemini on":NATIVE?"· free, offline on this phone":"· free translation (no key)"}
+$("#gkey").value=store.get("gkey","");$("#gmodel").value=store.get("gmodel","");
+$("#gkey").addEventListener("input",()=>{store.set("gkey",$("#gkey").value.trim());blocked=false;cache.clear();splitBlocks(TPL.bank).forEach((b,i)=>cache.set("Hindi|formal|"+b,SEED_HI[i]));paintEngine()});
+$("#gmodel").addEventListener("input",()=>store.set("gmodel",$("#gmodel").value.trim()||"gemini-2.5-flash-lite"));
+paintEngine();
+$("#printBtn").onclick=async()=>{
+  if(!out.value.trim())return toast("Nothing to print yet.");
+  const b=await textToPdf($("#bi").checked&&src.value.trim()?[src.value,out.value]:out.value);
+  if(NATIVE){toast("Choose a printer or PDF app from the list");return nativeSave(fname(letterName(),"pdf"),b)}
+  const u=URL.createObjectURL(b);const f=document.createElement("iframe");f.style.cssText="position:fixed;width:0;height:0;border:0;right:0;bottom:0";f.src=u;
+  f.onload=()=>{try{f.contentWindow.focus();f.contentWindow.print()}catch{window.open(u,"_blank")}setTimeout(()=>{f.remove();URL.revokeObjectURL(u)},60000)};document.body.append(f);
+};
+let installEvt=null;
+window.addEventListener("beforeinstallprompt",e=>{e.preventDefault();installEvt=e;$("#installBtn").hidden=false});
+$("#installBtn").onclick=async()=>{if(!installEvt)return;installEvt.prompt();await installEvt.userChoice.catch(()=>{});installEvt=null;$("#installBtn").hidden=true};
+if(!NATIVE&&"serviceWorker" in navigator&&location.protocol==="https:")navigator.serviceWorker.register("sw.js").catch(()=>{});
+
+/* ---------- Drop zones ---------- */
+function dropZone(label,input,onFile){
+  input.onchange=()=>{if(input.files[0])onFile(input.files[0]);input.value=""};
+  label.addEventListener("dragover",e=>{e.preventDefault();label.classList.add("over")});
+  label.addEventListener("dragleave",()=>label.classList.remove("over"));
+  label.addEventListener("drop",e=>{e.preventDefault();label.classList.remove("over");const f=e.dataTransfer.files[0];if(f)onFile(f)});
+}
+
+/* ---------- PowerPoint ---------- */
+const A="http://schemas.openxmlformats.org/drawingml/2006/main";
+let ppt=null; // {zip,name,slides:[{path,doc,paras:[{el,orig}]}]}
+async function slideOrder(zip){
+  try{
+    const pres=new DOMParser().parseFromString(await zip.file("ppt/presentation.xml").async("string"),"application/xml");
+    const rels=new DOMParser().parseFromString(await zip.file("ppt/_rels/presentation.xml.rels").async("string"),"application/xml");
+    const map={}; for(const r of rels.getElementsByTagName("Relationship")) map[r.getAttribute("Id")]=r.getAttribute("Target");
+    const ids=[...pres.getElementsByTagName("p:sldId")].map(n=>n.getAttribute("r:id"));
+    const paths=ids.map(id=>"ppt/"+map[id].replace(/^\/?ppt\//,"").replace(/^\.\//,"")).filter(p=>zip.file(p));
+    if(paths.length) return paths;
+  }catch{}
+  return Object.keys(zip.files).filter(p=>/^ppt\/slides\/slide\d+\.xml$/.test(p)).sort((a,b)=>parseInt(a.match(/\d+/))-parseInt(b.match(/\d+/)));
+}
+const paraText=p=>{let s="";for(const n of p.getElementsByTagNameNS(A,"*")){if(n.localName==="t"&&n.parentNode.localName==="r")s+=n.textContent;else if(n.localName==="br")s+="\n"}return s};
+async function openPpt(file){
+  if(!/\.pptx$/i.test(file.name)) return toast("Please choose a .pptx file. Old .ppt files must be saved as .pptx first.");
+  setStatus("busy","Opening "+file.name+"…");
+  try{
+    const zip=await JSZip.loadAsync(file); const slides=[];
+    for(const path of await slideOrder(zip)){
+      const doc=new DOMParser().parseFromString(await zip.file(path).async("string"),"application/xml");
+      const paras=[...doc.getElementsByTagNameNS(A,"p")].map(el=>({el,orig:paraText(el)})).filter(p=>p.orig.trim());
+      slides.push({path,doc,paras});
+    }
+    ppt={zip,name:file.name,slides}; renderPpt(); setStatus("","Opened "+file.name);
+  }catch(e){setStatus("err","That file could not be read as a PowerPoint.")}
+}
+function renderPpt(){
+  $("#pptDrop").hidden=true;$("#pptWork").hidden=false;$("#pptName").textContent=ppt.name;
+  const box=$("#slides");box.replaceChildren();
+  ppt.slides.forEach((s,i)=>{
+    const card=document.createElement("div");card.className="slide";
+    const h=document.createElement("h3");h.textContent=`Slide ${i+1}`+(s.paras.length?"":" · no text");card.append(h);
+    s.paras.forEach((p,j)=>{const t=document.createElement("textarea");t.id=`ppt-${i}-${j}`;t.rows=Math.min(6,Math.max(1,Math.ceil(p.orig.length/70)+(p.orig.match(/\n/g)||[]).length));t.value=p.cur??p.orig;t.classList.toggle("changed",(p.cur??p.orig)!==p.orig);t.oninput=()=>{p.cur=t.value;t.classList.toggle("changed",t.value!==p.orig)};p.ta=t;card.append(t)});
+    box.append(card);
+  });
+}
+function writePara(p,text){
+  const runs=[...p.el.childNodes].filter(n=>n.nodeType===1&&["r","br","fld"].includes(n.localName));
+  const first=runs.find(n=>n.localName==="r");
+  if(!first) return;
+  const lines=text.split("\n");
+  runs.forEach(n=>{if(n!==first)n.remove()});
+  first.getElementsByTagNameNS(A,"t")[0].textContent=lines[0];
+  let after=first;
+  for(const line of lines.slice(1)){ // keep line breaks inside a text box
+    const br=p.el.ownerDocument.createElementNS(A,"a:br");const rpr=first.getElementsByTagNameNS(A,"rPr")[0];if(rpr)br.append(rpr.cloneNode(true));
+    const r=first.cloneNode(true);r.getElementsByTagNameNS(A,"t")[0].textContent=line;
+    after.after(br);br.after(r);after=r;
+  }
+}
+dropZone($("#pptDrop"),$("#pptFile"),openPpt);
+$("#pptClose").onclick=()=>{ppt=null;$("#pptWork").hidden=true;$("#pptDrop").hidden=false;setStatus("","Ready")};
+$("#pptTranslate").onclick=async e=>{
+  const btn=e.currentTarget;const all=ppt.slides.flatMap(s=>s.paras);const items=all.map(p=>p.cur??p.orig);
+  btn.disabled=true;setStatus("busy",`Translating ${items.length} lines…`);
+  try{const res=await translateList(items);all.forEach((p,i)=>{p.cur=res[i];p.ta.value=res[i];p.ta.classList.toggle("changed",res[i]!==p.orig)});setStatus("","Slides translated into "+langSel.value)}
+  catch(err){setStatus("err",errMsg(err))}
+  finally{btn.disabled=false}
+};
+$("#pptSave").onclick=async()=>{
+  const ser=new XMLSerializer();
+  for(const s of ppt.slides){
+    let dirty=false;for(const p of s.paras){if(p.cur!=null&&p.cur!==p.orig){writePara(p,p.cur);dirty=true}}
+    if(dirty){let xml=ser.serializeToString(s.doc);if(!xml.startsWith("<?xml"))xml='<?xml version="1.0" encoding="UTF-8" standalone="yes"?>\n'+xml;ppt.zip.file(s.path,xml);s.paras.forEach(p=>{if(p.cur!=null)p.orig=p.cur})}
+  }
+  const blob=await ppt.zip.generateAsync({type:"blob",mimeType:"application/vnd.openxmlformats-officedocument.presentationml.presentation"});
+  renderPpt();saveFile(ppt.name.replace(/\.pptx$/i,"")+" (edited).pptx",blob);
+};
+
+/* ---------- PDF ---------- */
+pdfjsLib.GlobalWorkerOptions.workerSrc="lib/pdf.worker.min.js";
+let pdf=null, mode=null, sel=null; // pdf={doc,name,pages:[{w,h,el,canvas,items:[]}]}
+function setMode(m){mode=mode===m?null:m;$("#modeText").classList.toggle("on",mode==="text");$("#modeWhite").classList.toggle("on",mode==="white");$("#modeText").setAttribute("aria-pressed",String(mode==="text"));$("#modeWhite").setAttribute("aria-pressed",String(mode==="white"));pdf?.pages.forEach(p=>{p.el.classList.toggle("mode-text",mode==="text");p.el.classList.toggle("mode-white",mode==="white")})}
+$("#modeText").onclick=()=>setMode("text");$("#modeWhite").onclick=()=>setMode("white");
+function select(it){if(sel?.node)sel.node.classList.remove("sel");sel=it;if(it?.node){it.node.classList.add("sel");if(it.type==="text"){$("#fs").value=Math.round(it.fs*612);$("#color").value=it.color||"#111111";paintBold(!!it.bold)}}}
+function paintBold(on){$("#boldBtn").classList.toggle("on",on);$("#boldBtn").setAttribute("aria-pressed",String(on))}
+$("#boldBtn").onclick=()=>{const on=$("#boldBtn").getAttribute("aria-pressed")!=="true";paintBold(on);if(sel?.type==="text"){sel.bold=on;layoutItem(sel)}};
+$("#color").onchange=()=>{if(sel?.type==="text"){sel.color=$("#color").value;layoutItem(sel)}};
+$("#fs").oninput=()=>{if(sel?.type==="text"){sel.fs=(+$("#fs").value||14)/612;layoutItem(sel)}};
+function layoutItem(it){const pw=it.page.el.clientWidth||1;const s=it.node.style;s.left=it.x*100+"%";s.top=it.y*100+"%";s.width=it.w*100+"%";if(it.type==="white")s.height=it.h*100+"%";else{s.fontSize=it.fs*pw+"px";s.fontWeight=it.bold?"700":"400";s.color=it.color||"#111111"}}
+function tool(label,title,fn,cls){const b=document.createElement("button");b.type="button";b.textContent=label;b.title=title;if(cls)b.className=cls;b.addEventListener("pointerdown",e=>e.stopPropagation());b.onclick=e=>{e.stopPropagation();fn(e)};return b}
+function dragHandle(btn,it){btn.addEventListener("pointerdown",e=>{e.preventDefault();e.stopPropagation();btn.setPointerCapture(e.pointerId);const r=it.page.el.getBoundingClientRect();const ox=e.clientX/r.width-it.x,oy=e.clientY/r.height-it.y;
+  const mv=ev=>{it.x=Math.max(0,Math.min(1-0.02,ev.clientX/r.width-ox));it.y=Math.max(0,Math.min(1-0.01,ev.clientY/r.height-oy));layoutItem(it)};
+  const up=()=>{btn.removeEventListener("pointermove",mv);btn.removeEventListener("pointerup",up)};btn.addEventListener("pointermove",mv);btn.addEventListener("pointerup",up)})}
+function removeItem(it){it.node.remove();it.page.items.splice(it.page.items.indexOf(it),1);if(sel===it)sel=null}
+function makeItem(page,it){
+  it.page=page;const n=document.createElement("div");it.node=n;n.className=it.type==="text"?"tb":"wo";
+  const tools=document.createElement("div");tools.className="tools";
+  const grip=tool("⠿ Move","Drag to move",()=>{}, "grip");dragHandle(grip,it);tools.append(grip);
+  if(it.type==="text"){
+    const txt=document.createElement("div");txt.className="txt";txt.contentEditable="true";txt.spellcheck=true;txt.textContent=it.text;txt.oninput=()=>it.text=txt.innerText;it.txt=txt;
+    tools.append(tool("Wider","Make the box wider",()=>{it.w=Math.min(1-it.x,it.w+0.08);layoutItem(it)}),tool("Narrower","Make the box narrower",()=>{it.w=Math.max(0.06,it.w-0.08);layoutItem(it)}),
+      tool("Translate","Translate this box",async()=>{setStatus("busy","Translating…");try{const [r]=await translateList([it.text]);it.text=r;txt.textContent=r;setStatus("","Translated into "+langSel.value)}catch(e){setStatus("err",errMsg(e))}}));
+    n.append(tools,txt);
+  }else n.append(tools);
+  tools.append(tool("Delete","Remove",()=>removeItem(it)));
+  n.addEventListener("pointerdown",e=>{if(mode&&it.type==="white")return;e.stopPropagation();select(it)});
+  page.el.append(n);page.items.push(it);layoutItem(it);return it;
+}
+function wirePage(page){
+  page.el.addEventListener("pointerdown",e=>{
+    if(!mode){select(null);return}
+    const r=page.el.getBoundingClientRect();const x=(e.clientX-r.left)/r.width,y=(e.clientY-r.top)/r.height;
+    if(mode==="text"){e.preventDefault();const it=makeItem(page,{type:"text",x,y:Math.max(0,y-0.01),w:Math.min(0.45,1-x),fs:(+$("#fs").value||14)/612,text:"",bold:$("#boldBtn").getAttribute("aria-pressed")==="true",color:$("#color").value});select(it);setMode("text");it.txt.focus();setTimeout(()=>it.txt.focus(),0);return}
+    e.preventDefault();page.el.setPointerCapture(e.pointerId);
+    const it=makeItem(page,{type:"white",x,y,w:0.001,h:0.001});select(it);
+    const mv=ev=>{const cx=(ev.clientX-r.left)/r.width,cy=(ev.clientY-r.top)/r.height;it.x=Math.max(0,Math.min(x,cx));it.y=Math.max(0,Math.min(y,cy));it.w=Math.min(1,Math.abs(cx-x));it.h=Math.min(1,Math.abs(cy-y));layoutItem(it)};
+    const up=()=>{page.el.removeEventListener("pointermove",mv);page.el.removeEventListener("pointerup",up);if(it.w<0.01||it.h<0.005)removeItem(it)};
+    page.el.addEventListener("pointermove",mv);page.el.addEventListener("pointerup",up);
+  });
+}
+async function openPdf(file){
+  setStatus("busy","Opening "+file.name+"…");
+  try{
+    const doc=await pdfjsLib.getDocument({data:new Uint8Array(await file.arrayBuffer()),isEvalSupported:false}).promise;
+    const box=$("#pages");box.replaceChildren();const pages=[];
+    for(let i=1;i<=doc.numPages;i++){
+      const pg=await doc.getPage(i);const vp1=pg.getViewport({scale:1});const vp=pg.getViewport({scale:Math.min(2,1600/vp1.width)});
+      const el=document.createElement("div");el.className="pg";const c=document.createElement("canvas");c.width=Math.round(vp.width);c.height=Math.round(vp.height);el.append(c);
+      const num=document.createElement("span");num.className="num";num.textContent=`Page ${i} of ${doc.numPages}`;el.append(num);box.append(el);
+      await pg.render({canvasContext:c.getContext("2d"),viewport:vp}).promise;
+      const page={n:i,w:vp1.width,h:vp1.height,el,canvas:c,items:[],pg};wirePage(page);pages.push(page);
+    }
+    pdf={doc,name:file.name,pages};$("#pdfDrop").hidden=true;$("#pdfWork").hidden=false;setStatus("","Opened "+file.name);
+  }catch(e){console.error(e);setStatus("err","That file could not be opened as a PDF.")}
+}
+window.addEventListener("resize",()=>pdf?.pages.forEach(p=>p.items.forEach(layoutItem)));
+dropZone($("#pdfDrop"),$("#pdfFile"),openPdf);
+$("#pdfClose").onclick=()=>{pdf=null;sel=null;setMode(null);mode=null;$("#pages").replaceChildren();$("#pdfWork").hidden=true;$("#pdfDrop").hidden=false;setStatus("","Ready")};
+function wrapLines(ctx,text,maxW){const out=[];for(const para of text.split("\n")){let line="";for(const w of para.split(/(\s+)/)){const t=line+w;if(ctx.measureText(t).width>maxW&&line.trim()){out.push(line.trimEnd());line=w.trimStart()}else line=t}out.push(line.trimEnd())}return out}
+$("#pdfSave").onclick=async e=>{
+  const btn=e.currentTarget;btn.disabled=true;setStatus("busy","Making your PDF…");
+  try{
+    await document.fonts.load('400 20px "Noto Serif Devanagari"').catch(()=>{});
+    const {jsPDF}=window.jspdf;let doc;
+    for(const p of pdf.pages){
+      const touched=p.items.length>0;
+      const c=document.createElement("canvas");const scale=touched?Math.max(2,p.canvas.width/p.w):p.canvas.width/p.w;
+      c.width=Math.round(p.w*scale);c.height=Math.round(p.h*scale);const ctx=c.getContext("2d");
+      ctx.fillStyle="#fff";ctx.fillRect(0,0,c.width,c.height);ctx.drawImage(p.canvas,0,0,c.width,c.height);
+      for(const it of p.items){
+        const X=it.x*c.width,Y=it.y*c.height,Wd=it.w*c.width;
+        if(it.type==="white"){ctx.fillStyle="#fff";ctx.fillRect(X,Y,Wd,it.h*c.height);continue}
+        const fs=it.fs*c.width;ctx.font=`${it.bold?600:400} ${fs}px "Noto Serif Devanagari","Nirmala UI",serif`;ctx.fillStyle=it.color||"#111111";ctx.textBaseline="top";
+        wrapLines(ctx,it.text,Wd-fs*0.2).forEach((l,k)=>ctx.fillText(l,X+2*(c.width/p.el.clientWidth),Y+1+k*fs*1.3));
+      }
+      const o=p.w>p.h?"l":"p";
+      if(!doc)doc=new jsPDF({unit:"pt",format:[p.w,p.h],orientation:o});else doc.addPage([p.w,p.h],o);
+      doc.addImage(c.toDataURL("image/jpeg",0.9),"JPEG",0,0,p.w,p.h);
+    }
+    setStatus("","PDF ready");
+    await saveFile(pdf.name.replace(/\.pdf$/i,"")+" (edited).pdf",doc.output("blob"));
+  }catch(err){console.error(err);setStatus("err","Could not make the PDF.")}
+  finally{btn.disabled=false}
+};
+$("#pdfToLetter").onclick=async()=>{
+  setStatus("busy","Reading the PDF text…");let text="";
+  for(const p of pdf.pages){const tc=await p.pg.getTextContent();for(const it of tc.items){text+=it.str+(it.hasEOL?"\n":"")}text+="\n\n"}
+  text=text.replace(/\n{3,}/g,"\n\n").trim();
+  if(!text){
+    const sample=await getSample();const lim=sample?await sample.limits().catch(()=>null):null;
+    if(!lim?.images){setStatus("err","This PDF is a scanned image. Reading it needs a free Gemini key (AI settings).");return}
+    setStatus("busy","This PDF is a scan. Reading the pages…");
+    try{const imgs=await Promise.all(pdf.pages.slice(0,lim.images.maxCount).map(p=>new Promise(r=>p.canvas.toBlob(r,"image/jpeg",0.9))));
+      text=await readImages(imgs);}catch(e){setStatus("err",errMsg(e));return}
+    if(!text){setStatus("err","No readable text was found in this PDF.");return}
+  }
+  src.value=text;store.set("draft",text);outEdited=false;$("#editedNote").hidden=true;show("letter");renderOut();runTranslate(true);
+  toast("PDF text moved to the Letter tab");
+};
+})();
+</script>
+
+</body>
+</html>
