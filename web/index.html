@@ -6,10 +6,15 @@
 <meta name="description" content="Write or speak in English and get your letter in Hindi or 20+ languages as you type. 30 ready letters, photo to text, WhatsApp share, PowerPoint and PDF editing.">
 <meta name="theme-color" content="#f5f7ff">
 <link rel="manifest" href="manifest.webmanifest">
-<link rel="icon" type="image/svg+xml" href="logo.svg?v=17">
-<link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png?v=17">
-<link rel="apple-touch-icon" href="icon-192.png?v=17">
-<title>Varnum</title>
+<link rel="icon" type="image/svg+xml" href="logo.svg?v=18">
+<link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png?v=18">
+<link rel="apple-touch-icon" href="icon-192.png?v=18">
+<title>Varnum · Write letters in Hindi, free</title>
+<link rel="canonical" href="https://varnum.alvvintechnology.com/">
+<meta property="og:title" content="Varnum · Write letters in Hindi, free">
+<meta property="og:description" content="Type in English and get your letter in formal Hindi or 20+ languages as you type. 30 ready letters, Word, PowerPoint and PDF translation. Free.">
+<meta property="og:image" content="https://varnum.alvvintechnology.com/icon-512.png">
+<meta property="og:url" content="https://varnum.alvvintechnology.com/">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Mukta:wght@400;500;700&family=Sora:wght@500;600;700&family=Noto+Serif+Devanagari:wght@400;600&display=swap">
@@ -221,14 +226,16 @@ body.locked #fbBtn{display:none}
 #mergeDlg .row{display:flex;gap:10px;justify-content:flex-end}
 #mergeDlg .err{color:var(--warn,#a4501b);font-size:.88rem;min-height:1.1em}
 #logoPrev{max-height:48px;max-width:120px;border:1px solid var(--line);border-radius:8px;background:#fff}
+#uiLangBtn{font-weight:600}
+.uiLangGate{position:absolute;top:14px;right:14px;padding:4px 12px;font-size:.88rem;z-index:1}
 </style>
 
-<script src="auth.js?v=17"></script>
+<script src="auth.js?v=18"></script>
 </head>
 <body>
 <div class="wrap">
   <header class="bar">
-    <div class="brand"><img src="logo.svg?v=17" width="38" height="38" alt=""><b>Varnum</b></div>
+    <div class="brand"><img src="logo.svg?v=18" width="38" height="38" alt=""><b>Varnum</b></div>
     <nav class="tabs" role="tablist">
       <button role="tab" id="tab-letter" aria-selected="true" data-view="letter">Letter</button>
       <button role="tab" id="tab-word" aria-selected="false" data-view="word">Word</button>
@@ -284,7 +291,7 @@ body.locked #fbBtn{display:none}
       <span class="sep"></span>
       <button class="btn" id="saveLetter">Save letter</button>
       <label>My letters <select id="saved"><option value="">None saved yet</option></select></label>
-      <label>Folder <select id="folder"><option value="">All folders</option><option>Bank</option><option>School &amp; college</option><option>Job</option><option>Government</option><option>Police</option><option>Personal</option><option>Other</option></select></label>
+      <label>Folder <select id="folder"><option value="">All folders</option><option value="Bank">Bank</option><option value="School &amp; college">School &amp; college</option><option value="Job">Job</option><option value="Government">Government</option><option value="Police">Police</option><option value="Personal">Personal</option><option value="Other">Other</option></select></label>
       <input type="search" id="findLetter" placeholder="Search my letters" aria-label="Search my letters">
       <button class="btn" id="delLetter" hidden>Delete</button>
     </div>
@@ -389,7 +396,7 @@ body.locked #fbBtn{display:none}
     </div>
   </section>
 
-  <footer>Free translation runs on your device in Chrome (desktop), or through the free MyMemory service. Files stay in your browser.</footer>
+  <footer><a href="guide.html">How to write a letter in Hindi</a> · Free translation runs on your device in Chrome (desktop), or through the free MyMemory service. Files stay in your browser.</footer>
 </div>
 <div class="toast" id="toast" hidden></div>
 
@@ -1645,6 +1652,9 @@ With deepest sympathy,
   // Re-fill when the user changes their details, so the next template picked has them.
   for(const id of ["lhName","lhAddr","lhContact"])$("#"+id).addEventListener("input",()=>{for(const k in MORE_TPL)TPL[k]=fill(MORE_TPL[k][1])});
   sel.value=was;const saved=store.get("tpl","");if(saved&&MORE_TPL[saved]&&store.get("draft",null)!=null)sel.value=saved;
+  // Links like ?tpl=leave (from the guide page) open that ready letter.
+  const want=new URLSearchParams(location.search).get("tpl");
+  if(want&&TPL[want]!=null){sel.value=want;sel.dispatchEvent(new Event("change"));history.replaceState(null,"",location.pathname)}
 })();
 
 /* ---------- Speak to type (Chrome's free speech recognition) ---------- */
@@ -1860,5 +1870,6 @@ const loadScript=src=>new Promise((ok,bad)=>{if(document.querySelector(`script[s
   };
 })();
 </script>
+<script src="ui-hi.js?v=18"></script>
 </body>
 </html>

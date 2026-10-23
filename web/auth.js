@@ -83,7 +83,7 @@ body.locked .wrap{visibility:hidden}`;
     gate.id = "authGate";
     gate.innerHTML = `
 <form class="card" novalidate>
-  <h1><img src="logo.svg?v=17" width="44" height="44" alt=""><b>Varnum</b></h1>
+  <h1><img src="logo.svg?v=18" width="44" height="44" alt=""><b>Varnum</b></h1>
   <p class="sub">Write in English, get it in Hindi or any language.</p>
   <div class="switch" role="group" aria-label="Account">
     <button type="button" data-m="signin">Sign in</button>
@@ -95,7 +95,7 @@ body.locked .wrap{visibility:hidden}`;
   <label class="f-confirm">Confirm password<input name="confirm" type="password" autocomplete="new-password" maxlength="100"></label>
   <div class="err" role="alert"></div>
   <button class="go" type="submit"></button>
-  <p class="note">Your account is saved in this browser on this device.</p>
+  <p class="note">Your account is saved in this browser on this device. · <a href="guide.html">How to write a letter in Hindi</a></p>
 </form>`;
     document.body.appendChild(gate);
     const form = gate.querySelector("form"), err = gate.querySelector(".err"), go = gate.querySelector(".go");
