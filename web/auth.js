@@ -1,0 +1,153 @@
+// Sign up / sign in screen for the web version of Anuvad Desk.
+// Accounts are kept in this browser only (localStorage); passwords are stored as a salted PBKDF2 hash.
+// There is no server yet, so an account made in one browser is not known in another.
+(function () {
+  if (window.Capacitor && window.Capacitor.isNativePlatform && window.Capacitor.isNativePlatform()) return;
+
+  const USERS = "anuvad-users", SESSION = "anuvad-session";
+  const read = (k, d) => { try { return JSON.parse(localStorage.getItem(k)) ?? d; } catch { return d; } };
+  const write = (k, v) => { try { localStorage.setItem(k, JSON.stringify(v)); return true; } catch { return false; } };
+  const hex = b => [...new Uint8Array(b)].map(x => x.toString(16).padStart(2, "0")).join("");
+  const normEmail = e => e.trim().toLowerCase();
+
+  async function hash(password, saltHex) {
+    const salt = new Uint8Array(saltHex.match(/../g).map(h => parseInt(h, 16)));
+    const key = await crypto.subtle.importKey("raw", new TextEncoder().encode(password), "PBKDF2", false, ["deriveBits"]);
+    return hex(await crypto.subtle.deriveBits({ name: "PBKDF2", salt, iterations: 150000, hash: "SHA-256" }, key, 256));
+  }
+
+  const css = `
+#authGate{position:fixed;inset:0;z-index:50;background:var(--bg,#eef0f4);display:flex;align-items:center;justify-content:center;padding:16px;overflow:auto}
+#authGate .card{background:var(--surface,#fff);color:var(--ink,#1a2130);border:1px solid var(--line,#d5d9e2);border-radius:14px;padding:26px 24px;width:100%;max-width:380px;box-shadow:0 8px 30px rgba(0,0,0,.08)}
+#authGate h1{margin:0;font-size:1.5rem}
+#authGate h1 span{font-family:var(--letter,serif);color:var(--accent,#2f43a6);font-weight:400;margin-left:8px;font-size:1.2rem}
+#authGate p.sub{margin:4px 0 18px;color:var(--muted,#5d6778);font-size:.92rem}
+#authGate .switch{display:flex;background:var(--bg,#eef0f4);border-radius:9px;padding:3px;margin-bottom:16px}
+#authGate .switch button{flex:1;border:0;background:none;padding:8px;border-radius:7px;font:inherit;cursor:pointer;color:var(--ink,#1a2130)}
+#authGate .switch button[aria-pressed="true"]{background:var(--accent,#2f43a6);color:var(--accent-ink,#fff)}
+#authGate label{display:block;font-size:.88rem;margin-bottom:12px;color:var(--muted,#5d6778)}
+#authGate input{display:block;width:100%;box-sizing:border-box;margin-top:4px;padding:10px 12px;border:1px solid var(--line,#d5d9e2);border-radius:9px;background:var(--bg,#eef0f4);color:var(--ink,#1a2130);font:inherit}
+#authGate input:focus{outline:2px solid var(--accent,#2f43a6);outline-offset:1px}
+#authGate .go{width:100%;padding:11px;border:0;border-radius:9px;background:var(--accent,#2f43a6);color:var(--accent-ink,#fff);font:inherit;font-weight:600;cursor:pointer;margin-top:4px}
+#authGate .go:disabled{opacity:.6;cursor:wait}
+#authGate .err{color:var(--warn,#a4501b);font-size:.88rem;min-height:1.2em;margin:4px 0 8px}
+#authGate .note{color:var(--muted,#5d6778);font-size:.78rem;margin:14px 0 0}
+.userchip{display:flex;align-items:center;gap:8px;font-size:.88rem;color:var(--muted,#5d6778);margin-left:auto}
+.userchip b{color:var(--ink,#1a2130);font-weight:600}
+.userchip button{border:1px solid var(--line,#d5d9e2);background:var(--surface,#fff);color:var(--ink,#1a2130);border-radius:8px;padding:4px 10px;font:inherit;font-size:.85rem;cursor:pointer}
+body.locked .wrap{visibility:hidden}`;
+
+  const style = document.createElement("style");
+  style.textContent = css;
+  document.head.appendChild(style);
+
+  function currentUser() {
+    const s = read(SESSION, null);
+    if (!s) return null;
+    return read(USERS, {})[s.email] || null;
+  }
+
+  function showChip(user) {
+    let chip = document.getElementById("userChip");
+    const bar = document.querySelector("header.bar");
+    if (!bar) return;
+    if (!chip) {
+      chip = document.createElement("div");
+      chip.className = "userchip";
+      chip.id = "userChip";
+      bar.appendChild(chip);
+    }
+    chip.textContent = "";
+    const who = document.createElement("span");
+    who.append("Hi, ");
+    const b = document.createElement("b");
+    b.textContent = user.name.split(" ")[0];
+    b.title = user.email;
+    who.append(b);
+    const out = document.createElement("button");
+    out.type = "button";
+    out.textContent = "Sign out";
+    out.onclick = () => { localStorage.removeItem(SESSION); chip.remove(); showGate("signin"); };
+    chip.append(who, out);
+  }
+
+  function showGate(mode) {
+    document.body.classList.add("locked");
+    let gate = document.getElementById("authGate");
+    if (gate) gate.remove();
+    gate = document.createElement("div");
+    gate.id = "authGate";
+    gate.innerHTML = `
+<form class="card" novalidate>
+  <h1>Anuvad Desk<span>अनुवाद</span></h1>
+  <p class="sub">Write in English, get it in Hindi or any language.</p>
+  <div class="switch" role="group" aria-label="Account">
+    <button type="button" data-m="signin">Sign in</button>
+    <button type="button" data-m="signup">Create account</button>
+  </div>
+  <label class="f-name">Full name<input name="name" autocomplete="name" maxlength="80"></label>
+  <label>Email<input name="email" type="email" autocomplete="email" maxlength="120"></label>
+  <label>Password<input name="password" type="password" maxlength="100"></label>
+  <label class="f-confirm">Confirm password<input name="confirm" type="password" autocomplete="new-password" maxlength="100"></label>
+  <div class="err" role="alert"></div>
+  <button class="go" type="submit"></button>
+  <p class="note">Your account is saved in this browser on this device.</p>
+</form>`;
+    document.body.appendChild(gate);
+    const form = gate.querySelector("form"), err = gate.querySelector(".err"), go = gate.querySelector(".go");
+    const f = n => form.elements[n];
+
+    function setMode(m) {
+      mode = m;
+      gate.querySelectorAll(".switch button").forEach(b => b.setAttribute("aria-pressed", b.dataset.m === m));
+      gate.querySelector(".f-name").hidden = m !== "signup";
+      gate.querySelector(".f-confirm").hidden = m !== "signup";
+      f("password").autocomplete = m === "signup" ? "new-password" : "current-password";
+      go.textContent = m === "signup" ? "Create account" : "Sign in";
+      err.textContent = "";
+      (m === "signup" ? f("name") : f("email")).focus();
+    }
+    gate.querySelectorAll(".switch button").forEach(b => b.onclick = () => setMode(b.dataset.m));
+    if (!Object.keys(read(USERS, {})).length && mode === "signin") mode = "signup";
+    setMode(mode);
+
+    form.onsubmit = async e => {
+      e.preventDefault();
+      err.textContent = "";
+      const email = normEmail(f("email").value), password = f("password").value;
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) return err.textContent = "Enter a valid email address.";
+      const users = read(USERS, {});
+      go.disabled = true;
+      try {
+        if (mode === "signup") {
+          const name = f("name").value.trim().replace(/\s+/g, " ");
+          if (name.length < 2) return err.textContent = "Enter your name.";
+          if (password.length < 6) return err.textContent = "Password must be at least 6 characters.";
+          if (password !== f("confirm").value) return err.textContent = "The two passwords do not match.";
+          if (users[email]) return err.textContent = "An account with this email already exists. Sign in instead.";
+          const salt = hex(crypto.getRandomValues(new Uint8Array(16)));
+          users[email] = { name, email, salt, hash: await hash(password, salt), created: new Date().toISOString() };
+          if (!write(USERS, users)) return err.textContent = "This browser is blocking storage, so the account could not be saved.";
+        } else {
+          const u = users[email];
+          if (!u) return err.textContent = "No account with this email. Create one first.";
+          if (await hash(password, u.salt) !== u.hash) return err.textContent = "Wrong password.";
+        }
+        write(SESSION, { email, at: new Date().toISOString() });
+        gate.remove();
+        document.body.classList.remove("locked");
+        showChip(users[email]);
+      } finally { go.disabled = false; }
+    };
+  }
+
+  function start() {
+    if (!window.crypto || !crypto.subtle) {
+      // Web Crypto needs https (or localhost); without it, let the app open rather than lock the user out.
+      return;
+    }
+    const u = currentUser();
+    if (u) showChip(u); else showGate("signin");
+  }
+  if (document.readyState === "loading") document.addEventListener("DOMContentLoaded", start); else start();
+})();
