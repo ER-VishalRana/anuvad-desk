@@ -7,9 +7,9 @@
 <meta name="varnum-api" content="https://varnum-api.alvvintechnology.com">
 <meta name="theme-color" content="#f5f7ff">
 <link rel="manifest" href="manifest.webmanifest">
-<link rel="icon" type="image/svg+xml" href="logo.svg?v=22">
-<link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png?v=22">
-<link rel="apple-touch-icon" href="icon-192.png?v=22">
+<link rel="icon" type="image/svg+xml" href="logo.svg?v=23">
+<link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png?v=23">
+<link rel="apple-touch-icon" href="icon-192.png?v=23">
 <title>Varnum · Write letters in Hindi, free</title>
 <meta property="og:title" content="Varnum · Write letters in Hindi, free">
 <meta property="og:description" content="Type in English and get your letter in formal Hindi or 20+ languages as you type. 30 ready letters, Word, PowerPoint and PDF translation. Free.">
@@ -235,7 +235,7 @@ body.locked #fbBtn{display:none}
 <body>
 <div class="wrap">
   <header class="bar">
-    <div class="brand"><img src="logo.svg?v=22" width="38" height="38" alt=""><b>Varnum</b></div>
+    <div class="brand"><img src="logo.svg?v=23" width="38" height="38" alt=""><b>Varnum</b></div>
     <nav class="tabs" role="tablist">
       <button role="tab" id="tab-letter" aria-selected="true" data-view="letter">Letter</button>
       <button role="tab" id="tab-word" aria-selected="false" data-view="word">Word</button>
@@ -593,6 +593,17 @@ const words=x=>(x.trim().match(/\S+/g)||[]).length;
 function enPolish(t,srcLine){
   if(!srcLine.includes("\n"))t=t.replace(/\s*\n\s*/g," ");
   return t.replace(/(^|[.!?]\s+)([a-z])/g,(m,a,b)=>a+b.toUpperCase()).replace(/\bi\b(?=[\s'’,.!?]|$)/g,"I")}
+/* Better Indian-language translation from the open Sarvam Translate model on the Varnum server, when it is running.
+   If it is missing, busy or slow, the free translators below take over. */
+const API_BASE=(document.querySelector('meta[name="varnum-api"]')||{}).content||"https://varnum-api.alvvintechnology.com";
+const SARVAM_LANGS=new Set(["hi","mr","gu","pa","bn","or","ta","te","kn","ml","ur","ne","sa","en"]);let sarvamOffUntil=0;
+async function sarvam(text,t,signal){if(Date.now()<sarvamOffUntil||!SARVAM_LANGS.has(t)||!/\p{L}{2}/u.test(text))return null;
+  const ctl=new AbortController(),stop=()=>ctl.abort();signal?.addEventListener("abort",stop);const tm=setTimeout(stop,20000);
+  try{const r=await fetch(API_BASE+"/api/translate",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({text,target:t}),signal:ctl.signal});
+    if(r.status===404||r.status===503){const j=await r.json().catch(()=>({}));sarvamOffUntil=Date.now()+(j.error==="busy"?60000:600000);return null}
+    if(!r.ok)return null;const j=await r.json();return typeof j.text==="string"&&j.text.trim()?j.text.trim():null}
+  catch{if(signal?.aborted)throw {code:"cancelled"};sarvamOffUntil=Date.now()+60000;return null}
+  finally{clearTimeout(tm);signal?.removeEventListener("abort",stop)}}
 async function freeTranslate(items,signal){
   const t=LCODE[langSel.value]||"hi";const res=[];
   for(const item of items){
@@ -602,7 +613,7 @@ async function freeTranslate(items,signal){
     if(s===t&&!hinglish){res.push(item);continue}
     const lines=item.split("\n");const out=[];
     const useML=NATIVE&&MLKIT.has(s)&&MLKIT.has(t);const tr=useML?{translate:x=>mlTranslate(x,s,t)}:await chromeTranslator(s,t);
-    const tr1=async line=>{let r=null;if(tr&&!(s==="hi"&&!/[ऀ-ॿ]/.test(line))){try{r=await within(tr.translate(line),useML?180000:15000)}catch{r=null}}
+    const tr1=async line=>{let r=await sarvam(line,t,signal);if(!r?.trim()&&tr&&!(s==="hi"&&!/[ऀ-ॿ]/.test(line))){try{r=await within(tr.translate(line),useML?180000:15000)}catch{r=null}}
       if(!r?.trim()){r=await myMemory(line,s,t,signal);
         // The free online memory sometimes returns a whole different sentence for one or two words; don't use that.
         if(r&&words(line)<=3&&words(r)>Math.max(4,words(line)*3))r=null}
@@ -1995,7 +2006,7 @@ window.dispatchEvent(new Event("vn-ready"));
   };
 })();
 </script>
-<script src="tools.js?v=22"></script>
-<script src="ui-hi.js?v=22"></script>
+<script src="tools.js?v=23"></script>
+<script src="ui-hi.js?v=23"></script>
 </body>
 </html>

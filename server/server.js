@@ -8,6 +8,8 @@
 //   GET    /api/letters           (token)                  -> {letters: [...], deleted: [ids]}
 //   PUT    /api/letters/:id       (token) {letter}         create or update (newer ts wins)
 //   DELETE /api/letters/:id       (token)
+//   POST   /api/translate         {text, target}           -> {text}  (only when LLM_URL is set: a local llama.cpp
+//                                                            server running the open Sarvam Translate model)
 //   POST   /api/usage             {event, key}             anonymous daily counters, no letter content
 //   GET    /api/health            liveness + database check
 //   GET    /admin                 HTTP basic auth: users and usage per day
@@ -25,6 +27,7 @@ const {
   ADMIN_USER,
   ADMIN_PASSWORD,
   ORIGINS = "https://varnum.alvvintechnology.com,https://localhost,capacitor://localhost",
+  LLM_URL = "",
 } = process.env;
 
 if (!DATABASE_URL) { console.error("DATABASE_URL is required"); process.exit(1); }
@@ -194,7 +197,7 @@ app.delete("/api/letters/:id", wrap(auth), wrap(async (req, res) => {
 }));
 
 // Usage: only an event name and a short key (a language or template name) are counted per day.
-const EVENTS = new Set(["visit", "translate", "template", "download", "word", "ppt", "pdf", "merge", "share", "signup", "login"]);
+const EVENTS = new Set(["visit", "translate", "template", "download", "word", "ppt", "pdf", "merge", "share", "tool", "signup", "login"]);
 async function bump(event, key) {
   await pool.query(
     `INSERT INTO usage_daily (day, event, key, count) VALUES ((now() AT TIME ZONE 'Asia/Kolkata')::date, $1, $2, 1)
@@ -206,6 +209,42 @@ app.post("/api/usage", wrap(async (req, res) => {
   if (limited("usage", clientIp(req), 120, 10)) return res.status(429).json({ ok: false });
   await bump(event, key);
   res.json({ ok: true });
+}));
+
+// ---------- translation (open Sarvam Translate model on this machine) ----------
+// One request runs at a time on the CPU; others wait in line. A short queue keeps answers quick:
+// when it is full the website falls back to its free online translators.
+const LANG_NAMES = { hi: "Hindi", mr: "Marathi", gu: "Gujarati", pa: "Punjabi", bn: "Bengali", or: "Odia", ta: "Tamil", te: "Telugu", kn: "Kannada",
+  ml: "Malayalam", ur: "Urdu", ne: "Nepali", sa: "Sanskrit", as: "Assamese", kok: "Konkani", mai: "Maithili", sd: "Sindhi", en: "English" };
+const tCache = new Map();
+let tChain = Promise.resolve(), tWaiting = 0;
+async function llmTranslate(text, target) {
+  const r = await fetch(LLM_URL.replace(/\/$/, "") + "/v1/chat/completions", {
+    method: "POST", headers: { "Content-Type": "application/json" }, signal: AbortSignal.timeout(45_000),
+    body: JSON.stringify({ messages: [{ role: "system", content: `Translate the text below to ${LANG_NAMES[target]}.` }, { role: "user", content: text }],
+      temperature: 0.01, max_tokens: Math.min(1024, text.length * 3 + 64) }),
+  });
+  if (!r.ok) throw new Error("llm " + r.status);
+  const j = await r.json();
+  return String(j.choices?.[0]?.message?.content || "").trim();
+}
+app.post("/api/translate", wrap(async (req, res) => {
+  if (!LLM_URL) return res.status(503).json({ ok: false, error: "not_available" });
+  const text = typeof req.body?.text === "string" ? req.body.text.trim() : "", target = clip(req.body?.target, 4);
+  if (!text || text.length > 1500 || !LANG_NAMES[target]) return res.status(422).json({ ok: false });
+  if (limited("translate", clientIp(req), 300, 10)) return res.status(429).json({ ok: false });
+  const key = target + "|" + text;
+  if (tCache.has(key)) return res.json({ ok: true, text: tCache.get(key), cached: true });
+  if (tWaiting >= 6) return res.status(503).json({ ok: false, error: "busy" });
+  tWaiting++;
+  const job = tChain.then(() => llmTranslate(text, target));
+  tChain = job.catch(() => {});
+  let out;
+  try { out = await job; } catch (e) { console.error("[varnum-api] translate", e.message); return res.status(502).json({ ok: false }); } finally { tWaiting--; }
+  if (!out) return res.status(502).json({ ok: false });
+  tCache.set(key, out);
+  if (tCache.size > 5000) tCache.delete(tCache.keys().next().value);
+  res.json({ ok: true, text: out });
 }));
 
 // ---------- admin ----------

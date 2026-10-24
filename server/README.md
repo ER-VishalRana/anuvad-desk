@@ -11,3 +11,24 @@ served at https://varnum-api.alvvintechnology.com. The website itself is static 
 
 What is stored: name, email, a scrypt password hash, letterhead details, saved letters (only when the user
 presses Save letter), and per-day counts of which features were used. Letter text is never counted or logged.
+
+## Better translation: the open Sarvam Translate model (optional)
+
+`POST /api/translate {text, target}` answers only when `LLM_URL` is set. It points at a local
+[llama.cpp](https://github.com/ggml-org/llama.cpp) server running the open
+[Sarvam Translate](https://huggingface.co/sarvamai/sarvam-translate) model (22 Indian languages, based on Gemma 3 4B).
+Without it, the endpoint returns 503 and the website uses its free translators as before.
+
+On Jarvis (CPU only, about 3 GB RAM, roughly 3 to 5 seconds per line):
+
+1. Build llama.cpp (`cmake -B build && cmake --build build -j --target llama-server llama-quantize`).
+2. Get a GGUF of the model. If no ready Q4_K_M file is published, convert it yourself:
+   `python convert_hf_to_gguf.py <sarvam-translate folder> --outfile sarvam-translate-f16.gguf`, then
+   `llama-quantize sarvam-translate-f16.gguf sarvam-translate-Q4_K_M.gguf Q4_K_M`.
+3. Run it as a service bound to localhost, for example a systemd unit `varnum-llm`:
+   `llama-server -m /srv/data/models/sarvam-translate-Q4_K_M.gguf --host 127.0.0.1 --port 8104 -t 8 -c 4096 --jinja`
+4. Add `LLM_URL=http://127.0.0.1:8104` to `/srv/sites/VarnumApi/.env` and restart `site-varnumapi`.
+5. Check: `curl -s -H 'Content-Type: application/json' -d '{"text":"Please look into this matter.","target":"hi"}' http://127.0.0.1:8103/api/translate`
+
+The API runs one translation at a time, keeps the last 5,000 answers in memory, and turns requests away (503 "busy")
+when more than 6 are waiting, so the website falls back instead of making people wait.
