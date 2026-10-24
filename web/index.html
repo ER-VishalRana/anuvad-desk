@@ -7,9 +7,9 @@
 <meta name="varnum-api" content="https://varnum-api.alvvintechnology.com">
 <meta name="theme-color" content="#f5f7ff">
 <link rel="manifest" href="manifest.webmanifest">
-<link rel="icon" type="image/svg+xml" href="logo.svg?v=23">
-<link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png?v=23">
-<link rel="apple-touch-icon" href="icon-192.png?v=23">
+<link rel="icon" type="image/svg+xml" href="logo.svg?v=24">
+<link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png?v=24">
+<link rel="apple-touch-icon" href="icon-192.png?v=24">
 <title>Varnum · Write letters in Hindi, free</title>
 <link rel="canonical" href="https://varnum.alvvintechnology.com/">
 <meta property="og:title" content="Varnum · Write letters in Hindi, free">
@@ -232,12 +232,12 @@ body.locked #fbBtn{display:none}
 #syncNote{margin:0 0 12px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 </style>
 
-<script src="auth.js?v=23"></script>
+<script src="auth.js?v=24"></script>
 </head>
 <body>
 <div class="wrap">
   <header class="bar">
-    <div class="brand"><img src="logo.svg?v=23" width="38" height="38" alt=""><b>Varnum</b></div>
+    <div class="brand"><img src="logo.svg?v=24" width="38" height="38" alt=""><b>Varnum</b></div>
     <nav class="tabs" role="tablist">
       <button role="tab" id="tab-letter" aria-selected="true" data-view="letter">Letter</button>
       <button role="tab" id="tab-word" aria-selected="false" data-view="word">Word</button>
@@ -498,7 +498,10 @@ const G=(m,f)=>()=>genderSel.value==="f"?f:m;
 const HI_LINES={
 "to":"सेवा में","dear":"प्रिय","leave application":"अवकाश हेतु प्रार्थना-पत्र","application for leave":"अवकाश हेतु प्रार्थना-पत्र","name":"नाम","class":"कक्षा","subject":"विषय","address":"पता",
 "father's name":"पिता का नाम","mother's name":"माता का नाम","roll no":"अनुक्रमांक","roll number":"अनुक्रमांक","signature":"हस्ताक्षर","mobile":"मोबाइल","phone":"फ़ोन","school":"विद्यालय","section":"वर्ग","date of birth":"जन्म तिथि","to the principal":"सेवा में, प्रधानाचार्य महोदय","to the headmaster":"सेवा में, प्रधानाध्यापक महोदय",
-"the principal":"प्रधानाचार्य महोदय","principal":"प्रधानाचार्य महोदय","the headmaster":"प्रधानाध्यापक महोदय","the headmistress":"प्रधानाध्यापिका महोदया",
+"the principal":"प्रधानाचार्य महोदय","principal":"प्रधानाचार्य","secretary":"सचिव","deponent":"शपथकर्ता","verification":"सत्यापन","office note":"कार्यालय टिप्पणी","agenda":"कार्यसूची",
+"character certificate":"चरित्र प्रमाण-पत्र","experience certificate":"अनुभव प्रमाण-पत्र","bonafide certificate":"वास्तविक छात्र प्रमाण-पत्र","school leaving certificate":"विद्यालय स्थानांतरण प्रमाण-पत्र",
+"salary certificate":"वेतन प्रमाण-पत्र","notice":"सूचना","affidavit":"शपथ-पत्र","to whom it may concern":"जिससे संबंधित हो","conduct: good":"आचरण: अच्छा",
+"section officer / head of office":"अनुभाग अधिकारी / कार्यालय प्रमुख","the headmaster":"प्रधानाध्यापक महोदय","the headmistress":"प्रधानाध्यापिका महोदया",
 "the branch manager":"शाखा प्रबंधक","the manager":"प्रबंधक महोदय","the station house officer":"थाना प्रभारी महोदय","the sho":"थाना प्रभारी महोदय",
 "the district collector":"जिलाधिकारी महोदय","the collector":"जिलाधिकारी महोदय","the commissioner":"आयुक्त महोदय","the editor":"संपादक महोदय",
 "the class teacher":"कक्षा अध्यापक महोदय","the hr manager":"मानव संसाधन प्रबंधक","the secretary":"सचिव महोदय","the chairman":"अध्यक्ष महोदय",
@@ -584,8 +587,15 @@ async function translitHi(line){
   return any?outp.join(""):null}
 /* Keep placeholders like {NAME} or [Name] exactly as they are: translate the text around them only. */
 const TOKEN=/(\{[^{}\n]{1,30}\}|\[[^\[\]\n\s]{1,20}(?:\s[^\[\]\n\s]{1,20})?\])/;
-async function aroundTokens(line,fn){
+async function aroundTokens(line,fn,fragFn=fn){
   if(!TOKEN.test(line))return fn(line);
+  // Translate the whole sentence with stand-ins for the placeholders, so the sentence keeps its meaning;
+  // if the translator drops a stand-in, translate the pieces between placeholders instead.
+  const toks=[];const masked=line.replace(new RegExp(TOKEN.source,"g"),m=>{toks.push(m);return "ZQX"+toks.length+"Q"});
+  if(!/\p{L}/u.test(masked.replace(/ZQX\d+Q/g,"")))return line;
+  const r=String(await fn(masked)||"");const seen=new Set();const back=r.replace(/ZQX\s*(\d+)\s*Q/gi,(m,n)=>{seen.add(+n);return toks[+n-1]??m});
+  if(seen.size===toks.length&&toks.every((_,i)=>seen.has(i+1)))return back;
+  fn=fragFn;
   const parts=line.split(TOKEN);const out=[];
   for(const [i,x] of parts.entries()){
     if(i%2===1||!/\p{L}/u.test(x)){out.push(x);continue}
@@ -624,7 +634,7 @@ async function freeTranslate(items,signal){
       if(signal?.aborted)throw {code:"cancelled"};
       if(hinglish&&!/[ऀ-ॿ]/.test(line)){const h=await translitHi(line);if(h)line=h}
       if(s===t){out.push(t==="hi"?hiPolish(line):line);continue}
-      let r=await aroundTokens(line,async seg=>(s==="en"&&t==="hi"?await hiPhrase(seg,tr1):s==="hi"&&t==="en"?await enPhrase(seg,tr1):null)??await tr1(seg));
+      let r=await aroundTokens(line,async seg=>(s==="en"&&t==="hi"?await hiPhrase(seg,tr1):s==="hi"&&t==="en"?await enPhrase(seg,tr1):null)??await tr1(seg),tr1);
       if(t==="hi"&&/^\s*इसलिए,?\s/.test(r)&&!/^\s*(so|therefore|hence|thus)\b/i.test(line))r=r.replace(/^(\s*)इसलिए,?\s+/,"$1");
       out.push(t==="hi"?hiPolish(/\.\s*$/.test(line)&&/[ऀ-ॿ]\s*$/.test(r)&&!/[।॥]\s*$/.test(r)?r.trimEnd()+"।":r):t==="en"?enPolish(r,line):r);}
     res.push(out.join("\n"));
@@ -907,7 +917,7 @@ async function textToPdf(input){
 }
 $("#dlPdf").onclick=async()=>{if(!out.value.trim())return toast("Nothing to save yet.");const b=await textToPdf($("#bi").checked&&src.value.trim()?[src.value,out.value]:out.value);saveFile(fname(letterName(),"pdf"),b)};
 
-const TITLE_RE=/^(.*\b(CERTIFICATE|NOTICE|AFFIDAVIT|DECLARATION|BIODATA)\b.*|TO WHOM IT MAY CONCERN|.*(प्रमाण-पत्र|प्रमाण पत्र|प्रमाणपत्र)|सूचना|नोटिस|शपथ-पत्र|शपथ पत्र|हलफनामा|घोषणा-पत्र|घोषणा पत्र|स्व-घोषणा पत्र|जिससे संबंधित हो|जिसके लिए संबंधित है|बायोडाटा)$/;
+const TITLE_RE=/^(.*\b(CERTIFICATE|NOTICE|AFFIDAVIT|DECLARATION|BIODATA)\b.*|TO WHOM IT MAY CONCERN|.*(प्रमाण-पत्र|प्रमाण पत्र|प्रमाणपत्र)|सूचना|नोटिस|शपथ-पत्र|शपथ पत्र|हलफनामा|सत्यापन|कार्यालय टिप्पणी|VERIFICATION|घोषणा-पत्र|घोषणा पत्र|स्व-घोषणा पत्र|जिससे संबंधित हो|जिसके लिए संबंधित है|बायोडाटा)$/;
 function qrText(text,lh){const subj=(text.match(/^(?:Subject|विषय)\s*:\s*(.+)$/m)||[])[1]||"";const date=(text.match(/(?:Date|दिनांक)\s*:\s*(.+)$/m)||[])[1]||new Date().toLocaleDateString("en-IN");
   let h=0;for(const ch of text.replace(/\s+/g,""))h=(h*31+ch.codePointAt(0))>>>0;
   return ["Letter made with Varnum","From: "+(lh.name||"-"),lh.contact?"Contact: "+lh.contact:"",subj?"Subject: "+subj.trim():"","Date: "+date.trim(),"Check code: "+h.toString(36).toUpperCase()].filter(Boolean).join("\n")}
@@ -2008,7 +2018,7 @@ window.dispatchEvent(new Event("vn-ready"));
   };
 })();
 </script>
-<script src="tools.js?v=23"></script>
-<script src="ui-hi.js?v=23"></script>
+<script src="tools.js?v=24"></script>
+<script src="ui-hi.js?v=24"></script>
 </body>
 </html>

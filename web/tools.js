@@ -495,7 +495,8 @@ BUILD.biodata=()=>{
     if(s.type==="job"){y+=20;x.font=F(400,28);x.fillStyle="#111";
       const decl=hi?"मैं घोषणा करता/करती हूँ कि ऊपर दी गई सभी जानकारी मेरी जानकारी के अनुसार सत्य है।":"I declare that the above information is true to the best of my knowledge.";
       let line="";for(const w of decl.split(/(\s+)/)){const t=line+w;if(x.measureText(t.trim()).width>W-2*M&&line.trim()){x.fillText(line.trim(),M,y);y+=42;line=w.trimStart()}else line=t}if(line.trim()){x.fillText(line.trim(),M,y);y+=42}
-      y+=40;x.fillText((hi?"दिनांक: ":"Date: ")+today(),M,y);x.textAlign="right";x.fillText(s.name||"",W-M,y)}
+      y+=40;const HM=["जनवरी","फ़रवरी","मार्च","अप्रैल","मई","जून","जुलाई","अगस्त","सितंबर","अक्टूबर","नवंबर","दिसंबर"],dt=new Date();
+      x.fillText(hi?`दिनांक: ${dt.getDate()} ${HM[dt.getMonth()]} ${dt.getFullYear()}`:"Date: "+today(),M,y);x.textAlign="right";x.fillText(s.name||"",W-M,y)}
     return c}
   const baseName=()=>(store.get("bio",{}).name||"My")+" biodata";
   mk.onclick=async()=>{mk.disabled=true;try{const c=await render();const {jsPDF}=window.jspdf,doc=new jsPDF({unit:"pt",format:"a4"});doc.addImage(c.toDataURL("image/jpeg",0.92),"JPEG",0,0,595.28,841.89);await V.saveFile(V.fname(baseName(),"pdf"),doc.output("blob"))}catch(e){console.error(e);toast("Could not make the PDF.")}finally{mk.disabled=false}};
