@@ -7,9 +7,9 @@
 <meta name="varnum-api" content="https://varnum-api.alvvintechnology.com">
 <meta name="theme-color" content="#f5f7ff">
 <link rel="manifest" href="manifest.webmanifest">
-<link rel="icon" type="image/svg+xml" href="logo.svg?v=25">
-<link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png?v=25">
-<link rel="apple-touch-icon" href="icon-192.png?v=25">
+<link rel="icon" type="image/svg+xml" href="logo.svg?v=26">
+<link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png?v=26">
+<link rel="apple-touch-icon" href="icon-192.png?v=26">
 <title>Varnum · Write letters in Hindi, free</title>
 <meta property="og:title" content="Varnum · Write letters in Hindi, free">
 <meta property="og:description" content="Type in English and get your letter in formal Hindi or 20+ languages as you type. 30 ready letters, Word, PowerPoint and PDF translation. Free.">
@@ -235,10 +235,11 @@ body.locked #fbBtn{display:none}
 <body>
 <div class="wrap">
   <header class="bar">
-    <div class="brand"><img src="logo.svg?v=25" width="38" height="38" alt=""><b>Varnum</b></div>
+    <div class="brand"><img src="logo.svg?v=26" width="38" height="38" alt=""><b>Varnum</b></div>
     <nav class="tabs" role="tablist">
       <button role="tab" id="tab-letter" aria-selected="true" data-view="letter">Letter</button>
       <button role="tab" id="tab-word" aria-selected="false" data-view="word">Word</button>
+      <button role="tab" id="tab-excel" aria-selected="false" data-view="excel">Excel</button>
       <button role="tab" id="tab-ppt" aria-selected="false" data-view="ppt">PowerPoint</button>
       <button role="tab" id="tab-pdf" aria-selected="false" data-view="pdf">PDF</button>
       <button role="tab" id="tab-tools" aria-selected="false" data-view="tools">More tools</button>
@@ -355,6 +356,8 @@ body.locked #fbBtn{display:none}
       <div class="slides" id="wordParas"></div>
     </div>
   </section>
+
+  <section id="view-excel" hidden></section>
 
   <section id="view-ppt" hidden>
     <label class="drop" id="pptDrop">
@@ -669,7 +672,7 @@ ${JSON.stringify(chunk)}`;
 }
 
 /* ---------- Tabs ---------- */
-const views=["letter","word","ppt","pdf","tools"];
+const views=["letter","word","excel","ppt","pdf","tools"];
 function show(v){views.forEach(n=>{$("#view-"+n).hidden=n!==v;$("#tab-"+n).setAttribute("aria-selected",String(n===v))});store.set("view",v)}
 document.querySelectorAll("nav.tabs button").forEach(b=>b.onclick=()=>show(b.dataset.view));
 const hv=(location.hash||"").slice(1); show(views.includes(hv)?hv:store.get("view","letter"));
@@ -865,7 +868,7 @@ async function textToPdf(input){
   const W=1240,H=1754,M=150,B=110,FS=31,LH=FS*1.75; // A4 at 150 dpi, ~15pt type
   const font=`400 ${FS}px "Noto Serif Devanagari","Nirmala UI","Mangal",serif`;
   const pages=[]; let c,ctx,y;
-  const lh=letterhead();if(lh.qr&&!window.qrcode)await loadScript("https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js").catch(()=>{});
+  const lh=letterhead();if(lh.qr&&!window.qrcode)await loadScript("lib/qrcode.min.js").catch(()=>{});
   const sig=lh.sigOn&&lh.sig?await loadImg(lh.sig):null, logo=lh.on&&lh.logo?await loadImg(lh.logo):null;
   const frame=()=>{ctx.save();
     if(lh.design==="govt"){ctx.strokeStyle="#1f2937";ctx.lineWidth=5;ctx.strokeRect(40,40,W-80,H-80);ctx.lineWidth=1.5;ctx.strokeRect(54,54,W-108,H-108)}
@@ -1863,7 +1866,7 @@ const loadScript=src=>new Promise((ok,bad)=>{if(document.querySelector(`script[s
   const msg="Write letters in Hindi and 20+ languages for free with Varnum: "+URL_;
   let qrDone=false;
   b.onclick=async()=>{d.showModal();if(qrDone)return;
-    try{await loadScript("https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js");const q=qrcode(0,"M");q.addData(URL_);q.make();$("#qr").innerHTML=q.createSvgTag({cellSize:5,margin:2,scalable:true});qrDone=true}
+    try{await loadScript("lib/qrcode.min.js");const q=qrcode(0,"M");q.addData(URL_);q.make();$("#qr").innerHTML=q.createSvgTag({cellSize:5,margin:2,scalable:true});qrDone=true}
     catch{$("#qr").textContent="QR code needs internet."}};
   $("#shCopy").onclick=async()=>{try{await navigator.clipboard.writeText(URL_);toast("Link copied")}catch{d.querySelector("input").select()}};
   $("#shWa").onclick=()=>window.open("https://wa.me/?text="+encodeURIComponent(msg),"_blank","noopener");
@@ -1960,7 +1963,8 @@ for(const [id,ev,k] of [["dlPdf","download","pdf"],["dlDocx","download","docx"],
   document.getElementById(id)?.addEventListener("click",()=>track(ev,k));
 /* Bridge for tools.js (the "More tools" tab and letter add-ons). */
 window.VN={$,store,toast,setStatus,textToPdf,textToDocx,saveFile,fname,loadImg,loadScript,loadTesseract,letterhead,letters,paintSaved,track,TPL,MORE_TPL,translateList,
-  src,out,langSel,genderSel,show,letterName,hiPolish:t=>hiPolish(t),paintLogo,paintSig,savedSel,
+  src,out,langSel,genderSel,show,letterName,openWord,openPpt,openPdf,NATIVE,dropZone,
+  XLSX_URL:"lib/xlsx.full.min.js",hiPolish:t=>hiPolish(t),paintLogo,paintSig,savedSel,
   ocr:async f=>{await loadTesseract();const w=await Tesseract.createWorker(["eng","hin"]);try{const {data}=await w.recognize(f);return data.text.replace(/([ऀ-ॿ])[ \t]*\|/g,"$1।").replace(/[ \t]+\n/g,"\n").replace(/\n{3,}/g,"\n\n").trim()}finally{w.terminate()}},
   setSrc(t){src.value=t;store.set("draft",t);updateCount();outEdited=false;$("#editedNote").hidden=true;renderOut();schedule()},
   setOut(t){out.value=t;outEdited=true;$("#editedNote").hidden=false},
@@ -2017,7 +2021,8 @@ window.dispatchEvent(new Event("vn-ready"));
   };
 })();
 </script>
-<script src="tools.js?v=25"></script>
-<script src="ui-hi.js?v=25"></script>
+<script src="tools.js?v=26"></script>
+<script src="sheet.js?v=26"></script>
+<script src="ui-hi.js?v=26"></script>
 </body>
 </html>

@@ -3,6 +3,37 @@
 (function () {
   const KEY = "anuvad:uiLang";
   const D = {
+    "Excel": "एक्सेल",
+    "Open an Excel file (.xlsx, .xls, .csv)": "एक्सेल फ़ाइल खोलें (.xlsx, .xls, .csv)",
+    "Tap to choose, or drop it here. You can edit cells, sort, translate a column, and save it again. Free, and the file never leaves your phone.": "चुनने के लिए टैप करें या यहाँ छोड़ें। सेल बदलें, क्रम से लगाएँ, कॉलम का अनुवाद करें और फिर से सेव करें। मुफ़्त, और फ़ाइल आपके फ़ोन से बाहर नहीं जाती।",
+    "New blank sheet": "नई खाली शीट",
+    "Sheet from my names list": "मेरी नामों की सूची से शीट",
+    "Search": "खोजें",
+    "Search in sheet": "शीट में खोजें",
+    "Download .xlsx": "डाउनलोड .xlsx",
+    "Download .csv": "डाउनलोड .csv",
+    "+ Row": "+ पंक्ति",
+    "+ Column": "+ कॉलम",
+    "Delete row": "पंक्ति हटाएँ",
+    "Delete column": "कॉलम हटाएँ",
+    "Sort A→Z": "क्रम से लगाएँ A→Z",
+    "First row is headings": "पहली पंक्ति शीर्षक है",
+    "Translate column": "कॉलम का अनुवाद",
+    "Translate whole sheet": "पूरी शीट का अनुवाद",
+    "Make letters from this list": "इस सूची से पत्र बनाएँ",
+    "Tap a cell to edit it. Tap a column letter to pick that column, or a row number to pick that row. Translations go into a new column (or a new sheet), so your original stays as it was.": "सेल बदलने के लिए उस पर टैप करें। कॉलम चुनने के लिए उसका अक्षर, पंक्ति चुनने के लिए उसका नंबर टैप करें। अनुवाद नए कॉलम (या नई शीट) में आता है, आपका मूल डेटा वैसा ही रहता है।",
+    "Loading the Excel reader (one time)…": "एक्सेल रीडर लोड हो रहा है (एक बार)…",
+    "That file could not be read as a spreadsheet.": "यह फ़ाइल स्प्रेडशीट के रूप में नहीं पढ़ी जा सकी।",
+    "First tap a column letter (A, B, C…) to pick the column.": "पहले कॉलम का अक्षर (A, B, C…) टैप करके कॉलम चुनें।",
+    "First tap a row number to pick the row.": "पहले पंक्ति का नंबर टैप करके पंक्ति चुनें।",
+    "Translating…": "अनुवाद हो रहा है…",
+    "Could not make the Excel file.": "एक्सेल फ़ाइल नहीं बन सकी।",
+    "Could not make the PDF.": "PDF नहीं बन सकी।",
+    "New sheet ready": "नई शीट तैयार",
+    "Sorted A→Z": "क्रम से लगाया A→Z",
+    "Sorted Z→A": "उल्टे क्रम से लगाया Z→A",
+    "Please choose an Excel file (.xlsx, .xls) or a .csv file.": "कृपया एक्सेल फ़ाइल (.xlsx, .xls) या .csv फ़ाइल चुनें।",
+    "The sheet is empty.": "शीट खाली है।",
     "Write in English, get it in Hindi or any language.": "अंग्रेज़ी में लिखिए, हिंदी या किसी भी भाषा में पाइए।",
     "Sign in": "साइन इन", "Create account": "खाता बनाएँ", "Full name": "पूरा नाम", "Email": "ईमेल", "Password": "पासवर्ड",
     "Confirm password": "पासवर्ड दोबारा", "Your account is saved in this browser on this device. ·": "आपका खाता इसी डिवाइस के इस ब्राउज़र में सुरक्षित है। ·",
@@ -130,11 +161,14 @@
     [/^Making (\d+) letters…$/, (m) => `${m[1]} पत्र बन रहे हैं…`], [/^Translating (\d+) (lines|paragraphs)…$/, (m) => `${m[1]} ${m[2] === "lines" ? "पंक्तियों" : "पैराग्राफ़"} का अनुवाद हो रहा है…`],
     [/^Choose \((\d+)\)$/, (m) => `चुनें (${m[1]})`], [/^Letter (saved|updated) in (.+)$/, (m) => `पत्र ${m[2] in D ? D[m[2]] : m[2]} में ${m[1] === "saved" ? "सहेजा गया" : "अपडेट हुआ"}`],
     [/^Use “(.+)”$/, (m) => `“${m[1]}” लगाएँ`], [/^(Document|Page header|Page footer|Notes) · (\d+) paragraphs?$/, (m) => `${{ Document: "दस्तावेज़", "Page header": "पेज हेडर", "Page footer": "पेज फ़ुटर", Notes: "नोट्स" }[m[1]]} · ${m[2]} पैराग्राफ़`],
+    [/^(\d+ matches · )?(\d+) rows · (\d+) columns(.*)$/, (m) => `${m[1] ? m[1].replace("matches", "मिले") : ""}${m[2]} पंक्तियाँ · ${m[3]} कॉलम${m[4].replace(" · column ", " · कॉलम ").replace(" picked", " चुना").replace(/ · showing the first (\d+) rows \(search to find others\)/, " · पहली $1 पंक्तियाँ दिख रही हैं (बाकी के लिए खोजें)")}`],
+    [/^(Column|Sheet) translated into (.+?)( \(new sheet “(.+)”\))?$/, (m) => `${m[1] === "Column" ? "कॉलम" : "शीट"} का ${m[2]} में अनुवाद हो गया${m[4] ? ` (नई शीट “${m[4]}”)` : ""}`],
+    [/^(\d+) names ready\. Write the letter with \{NAME\}, then press “Many people…”\.$/, (m) => `${m[1]} नाम तैयार। पत्र में {NAME} लिखें, फिर “कई लोगों के लिए…” दबाएँ।`],
     [/^Slide (\d+)( · no text)?$/, (m) => `स्लाइड ${m[1]}${m[2] ? " · कोई टेक्स्ट नहीं" : ""}`],
     [/^The letter on the right does not contain “(.+)”\. Put it where the name should go\.$/, (m) => `दाईं ओर के पत्र में “${m[1]}” नहीं है। इसे वहाँ लिखें जहाँ नाम आना है।`]
   ];
   const tr = (s) => { if (D[s]) return D[s]; for (const [re, f] of RULES) { const m = s.match(re); if (m) return f(m); } return null; };
-  const SKIP = "textarea,script,style,#src,#out,#lang,#wordParas,#slides,#pages,#qr,.userchip b,#uiLangBtn,.uiLangGate";
+  const SKIP = "textarea,script,style,#src,#out,#lang,#wordParas,#slides,#pages,#qr,#sheetGrid,#sheetName,#sheetPick,.userchip b,#uiLangBtn,.uiLangGate";
   const orig = new WeakMap(), mine = new WeakMap();
   let on = false;
   try { on = localStorage.getItem(KEY) === "hi"; } catch {}

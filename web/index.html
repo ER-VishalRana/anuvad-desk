@@ -7,9 +7,9 @@
 <meta name="varnum-api" content="https://varnum-api.alvvintechnology.com">
 <meta name="theme-color" content="#f5f7ff">
 <link rel="manifest" href="manifest.webmanifest">
-<link rel="icon" type="image/svg+xml" href="logo.svg?v=25">
-<link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png?v=25">
-<link rel="apple-touch-icon" href="icon-192.png?v=25">
+<link rel="icon" type="image/svg+xml" href="logo.svg?v=26">
+<link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png?v=26">
+<link rel="apple-touch-icon" href="icon-192.png?v=26">
 <title>Varnum · Write letters in Hindi, free</title>
 <link rel="canonical" href="https://varnum.alvvintechnology.com/">
 <meta property="og:title" content="Varnum · Write letters in Hindi, free">
@@ -232,15 +232,16 @@ body.locked #fbBtn{display:none}
 #syncNote{margin:0 0 12px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 </style>
 
-<script src="auth.js?v=25"></script>
+<script src="auth.js?v=26"></script>
 </head>
 <body>
 <div class="wrap">
   <header class="bar">
-    <div class="brand"><img src="logo.svg?v=25" width="38" height="38" alt=""><b>Varnum</b></div>
+    <div class="brand"><img src="logo.svg?v=26" width="38" height="38" alt=""><b>Varnum</b></div>
     <nav class="tabs" role="tablist">
       <button role="tab" id="tab-letter" aria-selected="true" data-view="letter">Letter</button>
       <button role="tab" id="tab-word" aria-selected="false" data-view="word">Word</button>
+      <button role="tab" id="tab-excel" aria-selected="false" data-view="excel">Excel</button>
       <button role="tab" id="tab-ppt" aria-selected="false" data-view="ppt">PowerPoint</button>
       <button role="tab" id="tab-pdf" aria-selected="false" data-view="pdf">PDF</button>
       <button role="tab" id="tab-tools" aria-selected="false" data-view="tools">More tools</button>
@@ -357,6 +358,8 @@ body.locked #fbBtn{display:none}
       <div class="slides" id="wordParas"></div>
     </div>
   </section>
+
+  <section id="view-excel" hidden></section>
 
   <section id="view-ppt" hidden>
     <label class="drop" id="pptDrop">
@@ -671,7 +674,7 @@ ${JSON.stringify(chunk)}`;
 }
 
 /* ---------- Tabs ---------- */
-const views=["letter","word","ppt","pdf","tools"];
+const views=["letter","word","excel","ppt","pdf","tools"];
 function show(v){views.forEach(n=>{$("#view-"+n).hidden=n!==v;$("#tab-"+n).setAttribute("aria-selected",String(n===v))});store.set("view",v)}
 document.querySelectorAll("nav.tabs button").forEach(b=>b.onclick=()=>show(b.dataset.view));
 const hv=(location.hash||"").slice(1); show(views.includes(hv)?hv:store.get("view","letter"));
@@ -1962,7 +1965,8 @@ for(const [id,ev,k] of [["dlPdf","download","pdf"],["dlDocx","download","docx"],
   document.getElementById(id)?.addEventListener("click",()=>track(ev,k));
 /* Bridge for tools.js (the "More tools" tab and letter add-ons). */
 window.VN={$,store,toast,setStatus,textToPdf,textToDocx,saveFile,fname,loadImg,loadScript,loadTesseract,letterhead,letters,paintSaved,track,TPL,MORE_TPL,translateList,
-  src,out,langSel,genderSel,show,letterName,hiPolish:t=>hiPolish(t),paintLogo,paintSig,savedSel,
+  src,out,langSel,genderSel,show,letterName,openWord,openPpt,openPdf,NATIVE,dropZone,
+  XLSX_URL:"https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js",hiPolish:t=>hiPolish(t),paintLogo,paintSig,savedSel,
   ocr:async f=>{await loadTesseract();const w=await Tesseract.createWorker(["eng","hin"]);try{const {data}=await w.recognize(f);return data.text.replace(/([ऀ-ॿ])[ \t]*\|/g,"$1।").replace(/[ \t]+\n/g,"\n").replace(/\n{3,}/g,"\n\n").trim()}finally{w.terminate()}},
   setSrc(t){src.value=t;store.set("draft",t);updateCount();outEdited=false;$("#editedNote").hidden=true;renderOut();schedule()},
   setOut(t){out.value=t;outEdited=true;$("#editedNote").hidden=false},
@@ -2019,7 +2023,8 @@ window.dispatchEvent(new Event("vn-ready"));
   };
 })();
 </script>
-<script src="tools.js?v=25"></script>
-<script src="ui-hi.js?v=25"></script>
+<script src="tools.js?v=26"></script>
+<script src="sheet.js?v=26"></script>
+<script src="ui-hi.js?v=26"></script>
 </body>
 </html>

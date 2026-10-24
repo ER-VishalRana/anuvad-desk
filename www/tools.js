@@ -7,7 +7,7 @@ const V=window.VN;if(!V)return;
 const {$,store,toast}=V;
 const h=(tag,props={},...kids)=>{const e=document.createElement(tag);for(const [k,v] of Object.entries(props)){if(k==="class")e.className=v;else if(k==="html")e.innerHTML=v;else if(k.startsWith("on"))e[k]=v;else if(v!==false&&v!=null)e.setAttribute(k,v===true?"":v)}for(const c of kids.flat())if(c!=null)e.append(c);return e};
 const today=()=>new Date().toLocaleDateString("en-IN",{day:"numeric",month:"long",year:"numeric"});
-const QR_LIB="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js";
+const QR_LIB="lib/qrcode.min.js";
 
 document.head.append(h("style",{html:`
 .cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin-bottom:16px}
