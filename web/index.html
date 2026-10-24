@@ -7,9 +7,9 @@
 <meta name="varnum-api" content="https://varnum-api.alvvintechnology.com">
 <meta name="theme-color" content="#f5f7ff">
 <link rel="manifest" href="manifest.webmanifest">
-<link rel="icon" type="image/svg+xml" href="logo.svg?v=24">
-<link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png?v=24">
-<link rel="apple-touch-icon" href="icon-192.png?v=24">
+<link rel="icon" type="image/svg+xml" href="logo.svg?v=25">
+<link rel="icon" type="image/png" sizes="32x32" href="favicon-32.png?v=25">
+<link rel="apple-touch-icon" href="icon-192.png?v=25">
 <title>Varnum · Write letters in Hindi, free</title>
 <link rel="canonical" href="https://varnum.alvvintechnology.com/">
 <meta property="og:title" content="Varnum · Write letters in Hindi, free">
@@ -232,12 +232,12 @@ body.locked #fbBtn{display:none}
 #syncNote{margin:0 0 12px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
 </style>
 
-<script src="auth.js?v=24"></script>
+<script src="auth.js?v=25"></script>
 </head>
 <body>
 <div class="wrap">
   <header class="bar">
-    <div class="brand"><img src="logo.svg?v=24" width="38" height="38" alt=""><b>Varnum</b></div>
+    <div class="brand"><img src="logo.svg?v=25" width="38" height="38" alt=""><b>Varnum</b></div>
     <nav class="tabs" role="tablist">
       <button role="tab" id="tab-letter" aria-selected="true" data-view="letter">Letter</button>
       <button role="tab" id="tab-word" aria-selected="false" data-view="word">Word</button>
@@ -498,7 +498,7 @@ const G=(m,f)=>()=>genderSel.value==="f"?f:m;
 const HI_LINES={
 "to":"सेवा में","dear":"प्रिय","leave application":"अवकाश हेतु प्रार्थना-पत्र","application for leave":"अवकाश हेतु प्रार्थना-पत्र","name":"नाम","class":"कक्षा","subject":"विषय","address":"पता",
 "father's name":"पिता का नाम","mother's name":"माता का नाम","roll no":"अनुक्रमांक","roll number":"अनुक्रमांक","signature":"हस्ताक्षर","mobile":"मोबाइल","phone":"फ़ोन","school":"विद्यालय","section":"वर्ग","date of birth":"जन्म तिथि","to the principal":"सेवा में, प्रधानाचार्य महोदय","to the headmaster":"सेवा में, प्रधानाध्यापक महोदय",
-"the principal":"प्रधानाचार्य महोदय","principal":"प्रधानाचार्य","secretary":"सचिव","deponent":"शपथकर्ता","verification":"सत्यापन","office note":"कार्यालय टिप्पणी","agenda":"कार्यसूची",
+"the principal":"प्रधानाचार्य महोदय","principal":"प्रधानाचार्य","secretary":"सचिव","sir/madam":"महोदय/महोदया","respected sir/madam":"आदरणीय महोदय/महोदया","deponent":"शपथकर्ता","verification":"सत्यापन","office note":"कार्यालय टिप्पणी","agenda":"कार्यसूची",
 "character certificate":"चरित्र प्रमाण-पत्र","experience certificate":"अनुभव प्रमाण-पत्र","bonafide certificate":"वास्तविक छात्र प्रमाण-पत्र","school leaving certificate":"विद्यालय स्थानांतरण प्रमाण-पत्र",
 "salary certificate":"वेतन प्रमाण-पत्र","notice":"सूचना","affidavit":"शपथ-पत्र","to whom it may concern":"जिससे संबंधित हो","conduct: good":"आचरण: अच्छा",
 "section officer / head of office":"अनुभाग अधिकारी / कार्यालय प्रमुख","the headmaster":"प्रधानाध्यापक महोदय","the headmistress":"प्रधानाध्यापिका महोदया",
@@ -550,6 +550,7 @@ function hiPolish(t){
   t=f?t.replace(/([ऀ-ॿ]+)ता (हूँ|हूं)/g,"$1ती $2").replace(/([ऀ-ॿ]+)(ूँ|ूं|ऊँ|ऊं)गा(?![ऀ-ॿ])/g,"$1$2गी")
      :t.replace(/([ऀ-ॿ]+)ती (हूँ|हूं)/g,"$1ता $2").replace(/([ऀ-ॿ]+)(ूँ|ूं|ऊँ|ऊं)गी(?![ऀ-ॿ])/g,"$1$2गा");
   if(/मैं/.test(t))t=f?t.replace(/([ऀ-ॿ]+)ता था(?![ऀ-ॿ])/g,"$1ती थी").replace(/रहा था(?![ऀ-ॿ])/g,"रही थी"):t.replace(/([ऀ-ॿ]+)ती थी(?![ऀ-ॿ])/g,"$1ता था").replace(/रही थी(?![ऀ-ॿ])/g,"रहा था");
+  for(const [x,y] of [["प्रिय महोदय","महोदय"],["की कॉपी","की प्रति"],["हलफनामा","शपथ-पत्र"],["गंभीर रूप से घोषित करता","सत्यनिष्ठा से घोषणा करता"],["गंभीर रूप से घोषणा करता","सत्यनिष्ठा से घोषणा करता"],["गंभीर रूप से घोषित करती","सत्यनिष्ठा से घोषणा करती"],["एक वास्तविक छात्र","नियमित छात्र"]])t=t.split(x).join(y);
   t=t.replace(/([ऀ-ॿ)"'”’])\s*\.(?=\s|$)/g,"$1।").replace(/([ऀ-ॿ])\s*\|(?=\s|$)/g,"$1।");
   if(/(^|\s)\d{1,2}(st|nd|rd|th)?\s+[A-Z][a-z]{2,8}\.?\s+\d{4}|[A-Z][a-z]{2,8}\.?\s+\d{1,2},?\s+\d{4}/.test(t))t=hiMonths(t);
   return digitsSel.value==="deva"?devaDigits(t):t;
@@ -2018,7 +2019,7 @@ window.dispatchEvent(new Event("vn-ready"));
   };
 })();
 </script>
-<script src="tools.js?v=24"></script>
-<script src="ui-hi.js?v=24"></script>
+<script src="tools.js?v=25"></script>
+<script src="ui-hi.js?v=25"></script>
 </body>
 </html>
