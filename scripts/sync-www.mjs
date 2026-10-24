@@ -8,7 +8,7 @@ const LIBS = {
   "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js": "lib/pdf.min.js",
   "https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js": "lib/pdf.worker.min.js",
 };
-const COPY = ["logo.svg", "favicon-32.png", "logo-96.png", "icon-192.png", "icon-512.png", "icon-maskable-512.png", "ui-hi.js", "manifest.webmanifest"];
+const COPY = ["logo.svg", "favicon-32.png", "logo-96.png", "icon-192.png", "icon-512.png", "icon-maskable-512.png", "ui-hi.js", "tools.js", "manifest.webmanifest"];
 
 let html = readFileSync("web/index.html", "utf8");
 for (const [cdn, local] of Object.entries(LIBS)) {
